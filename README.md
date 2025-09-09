@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Shadcn-UI Template Usage Instructions
 
 ## technology stack
@@ -59,3 +60,6 @@ pnpm run dev
 ```shell
 pnpm run build
 ```
+=======
+# shadcn-ui
+>>>>>>> a22aadcddf8fa7ea280415f4e77f7629d982ed64
