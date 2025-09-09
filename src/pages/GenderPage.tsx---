@@ -1,0 +1,284 @@
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import Header from '@/components/Header';
+import ProductImage from '@/components/ProductImage';
+import { ProductFilter } from '@/components/ProductFilter';
+import { useProductFilters } from '@/hooks/useProductFilters';
+import { supabaseApi } from '@/lib/supabase-api';
+
+const GenderPage = () => {
+  const { gender } = useParams<{ gender: string }>();
+  const navigate = useNavigate();
+  const [showFilters, setShowFilters] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [seasons, setSeasons] = useState<string[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Используем хук для фильтров
+  const {
+    selectedCategories,
+    setSelectedCategories,
+    priceRange,
+    setPriceRange,
+    inStockOnly,
+    setInStockOnly,
+    loading: filtersLoading,
+    filteredProducts,
+    applyFilters,
+    resetFilters
+  } = useProductFilters({ 
+    selectedGender: gender || 'чол',
+    onFilteredProductsChange: (filteredProducts) => {
+      // Применяем дополнительную фильтрацию по сезону
+      if (selectedSeason) {
+        const norm = (v: any) => {
+          if (v === null || v === undefined) return '';
+          try {
+            let s = String(v).normalize('NFKC');
+            s = s.replace(/[–—‑−]/g, '-');
+            s = s.normalize('NFKD').replace(/\p{M}/gu, '');
+            s = s.replace(/[^0-9\p{L}\s-]/gu, '');
+            s = s.replace(/\s+/g, ' ').trim().toLowerCase();
+            return s;
+          } catch {
+            return String(v || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          }
+        };
+        const sel = norm(selectedSeason);
+        const seasonFiltered = filteredProducts.filter(p => {
+          const ps = norm(p.season);
+          return ps === sel || ps.includes(sel) || sel.includes(ps);
+        });
+        setProducts(seasonFiltered);
+      } else {
+        setProducts(filteredProducts);
+      }
+    }
+  });
+
+  // Применяем фильтры при загрузке страницы
+  useEffect(() => {
+    applyFilters();
+  }, []);
+
+  // Загружаем сезоны для выбранного пола
+  useEffect(() => {
+    if (!gender) return;
+    setLoading(true);
+    
+    supabaseApi.getSeasons(gender)
+      .then(data => {
+        const seasonsList = Array.isArray(data) ? data.map(item => item.season).filter(Boolean) : [];
+        setSeasons(seasonsList);
+      })
+      .catch(error => {
+        console.error('Failed to load seasons:', error);
+        // Fallback к старому API
+        const apiBase = 'http://178.212.198.23:3001';
+        fetch(`${apiBase}/api/seasons?gender=${encodeURIComponent(gender)}`)
+          .then(res => res.json())
+          .then(data => {
+            const seasonsList = Array.isArray(data) ? data.map(item => item.season || item).filter(Boolean) : [];
+            setSeasons(seasonsList);
+          })
+          .catch(() => setSeasons([]));
+      })
+      .finally(() => setLoading(false));
+  }, [gender]);
+
+  if (!gender) {
+    return <div>Пол не указан</div>;
+  }
+
+  const getGenderTitle = (gender: string) => {
+    switch (gender) {
+      case 'чол': return 'Мужская коллекция';
+      case 'жiн': return 'Женская коллекция';
+      case 'хлопч': return 'Коллекция для мальчиков';
+      case 'дiвч': return 'Коллекция для девочек';
+      default: return 'Коллекция';
+    }
+  };
+
+  const formatPrice = (v: any) => {
+    if (v === null || v === undefined || v === '') return '-';
+    const n = Number(String(v).replace(/\s+/g, '').replace(',', '.'));
+    if (Number.isNaN(n)) return String(v);
+    return n.toLocaleString('ru-RU') + ' грн';
+  };
+
+  const formatDiscount = (d: any) => {
+    if (d === null || d === undefined || d === '') return '-';
+    const n = Number(String(d).replace(',', '.'));
+    if (Number.isNaN(n)) return String(d);
+    return `${n}%`;
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <nav className="mb-8">
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <Link to="/" className="hover:text-foreground">Главная</Link>
+            <span>/</span>
+            <span className="text-foreground">{getGenderTitle(gender)}</span>
+          </div>
+        </nav>
+        
+        <div className="mb-4 flex items-center gap-3">
+          <Button onClick={() => navigate(-1)} variant="ghost">← Назад</Button>
+          <Link to="/"><Button variant="outline">Домой</Button></Link>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Left: рабочие фильтры */}
+          <aside className="hidden md:block md:w-1/4">
+            <ProductFilter
+              selectedGender={gender}
+              selectedCategories={selectedCategories}
+              priceRange={priceRange}
+              inStockOnly={inStockOnly}
+              onCategoriesChange={setSelectedCategories}
+              onPriceRangeChange={setPriceRange}
+              onInStockChange={setInStockOnly}
+              onApplyFilters={applyFilters}
+              onResetFilters={resetFilters}
+              loading={filtersLoading}
+            />
+          </aside>
+
+          {/* Main: seasons + products grid */}
+          <main className="flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-32 flex items-center">
+                <div className="flex items-center gap-2 md:hidden">
+                  <button
+                    className="p-2 rounded border bg-white"
+                    aria-label="Показать фильтры"
+                    onClick={() => setShowFilters(true)}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                  </button>
+                </div>
+              </div>
+              <h1 className="text-3xl font-bold text-center flex-1">{getGenderTitle(gender)}</h1>
+              <div className="w-32 flex justify-end">
+                <div className="text-sm text-gray-600">
+                  Найдено: {products.length}
+                </div>
+              </div>
+            </div>
+
+            {/* Seasons horizontal filter */}
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-2 justify-center">
+                <button
+                  className={`py-1.5 px-3 rounded ${!selectedSeason ? 'bg-gray-200' : 'bg-white'}`}
+                  onClick={() => setSelectedSeason(null)}
+                >
+                  Все сезоны
+                </button>
+                {seasons.map(season => (
+                  <button
+                    key={season}
+                    className={`py-1.5 px-3 rounded ${selectedSeason === season ? 'bg-gray-200' : 'bg-white'}`}
+                    onClick={() => setSelectedSeason(season)}
+                  >
+                    {season}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filtersLoading ? (
+              <div className="text-center">Обновление фильтров...</div>
+            ) : products.length === 0 ? (
+              <div className="text-center text-gray-500">Нет товаров по выбранным фильтрам.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {products.map((product: any) => (
+                  <Card key={product.product_id ?? product.id ?? product.article} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4 text-center">
+                      <div className="w-full h-48 bg-gray-100 mb-4 flex items-center justify-center rounded overflow-hidden">
+                        <ProductImage 
+                          product={product} 
+                          className="w-full h-full object-contain" 
+                          alt={product.name || product.article} 
+                        />
+                      </div>
+                      <Link 
+                        to={`/category/${gender}/${product.category_id}/${product.article}`} 
+                        className="block text-center mb-3 text-base font-medium text-foreground hover:text-blue-600"
+                      >
+                        {product.name}
+                      </Link>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="font-semibold text-lg text-blue-600">
+                          Цена: {formatPrice(product.price || product.sale_price || product.new_price)}
+                        </div>
+                        
+                        {product.discount && Number(product.discount) > 0 && (
+                          <div className="text-red-600 font-medium">
+                            Скидка: {formatDiscount(product.discount)}
+                          </div>
+                        )}
+                        
+                        <div className={`text-xs ${
+                          product.in_stock ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {product.in_stock ? 'В наличии' : 'Нет в наличии'}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
+        
+        {/* Off-canvas фильтры для мобильных */}
+        {showFilters && (
+          <div className="fixed inset-0 z-50 flex">
+            <div className="fixed inset-0 bg-black bg-opacity-40" onClick={() => setShowFilters(false)}></div>
+            <div className="relative w-80 max-w-full bg-white h-full shadow-xl overflow-auto">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-lg font-medium">Фильтры</div>
+                  <button className="p-2" onClick={() => setShowFilters(false)} aria-label="Закрыть">✕</button>
+                </div>
+                <ProductFilter
+                  selectedGender={gender}
+                  selectedCategories={selectedCategories}
+                  priceRange={priceRange}
+                  inStockOnly={inStockOnly}
+                  onCategoriesChange={setSelectedCategories}
+                  onPriceRangeChange={setPriceRange}
+                  onInStockChange={setInStockOnly}
+                  onApplyFilters={() => {
+                    applyFilters();
+                    setShowFilters(false);
+                  }}
+                  onResetFilters={() => {
+                    resetFilters();
+                    setShowFilters(false);
+                  }}
+                  loading={filtersLoading}
+                  className="bg-transparent shadow-none p-0"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default GenderPage;
