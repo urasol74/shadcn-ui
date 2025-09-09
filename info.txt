@@ -1,3 +1,6 @@
+githubkey
+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
+
 npm run dev -- --host - запуск 5173
 cd /home/ubuntu/shadcn-ui/backend && npm start - запуск 3001
 сайт https://mgx.dev/ - создание сайтов
