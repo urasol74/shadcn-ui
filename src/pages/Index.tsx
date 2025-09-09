@@ -190,22 +190,10 @@ export default function HomePage() {
               <Card key={product.product_id || product.article} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-6 text-center">
                   <div className="w-full h-32 bg-gray-200 mb-4 flex items-center justify-center rounded overflow-hidden">
-                    <img 
-                      src={`/static/pic/${product.article.replace(/\.K$/, '')}.jpg`}
+                    <ProductImage 
+                      product={product} 
                       className="w-full h-32 object-contain" 
                       alt={product.name || product.article}
-                      loading="lazy"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        const cleanArticle = product.article.replace(/\.K$/, '');
-                        if (img.src.includes('.jpg')) {
-                          img.src = `/static/pic/${cleanArticle}.jpeg`;
-                        } else if (img.src.includes('.jpeg')) {
-                          img.src = `/static/pic/${cleanArticle}.png`;
-                        } else {
-                          img.src = '/static/pic/placeholder.jpg';
-                        }
-                      }}
                     />
                   </div>
                   <Link to={`/category/${product.gender}/${product.category_id}/${product.article}`}>
