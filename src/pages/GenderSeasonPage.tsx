@@ -151,8 +151,10 @@ export default function GenderSeasonPage() {
             } catch (error) {
                 console.error('Products loading failed:', error);
                 setProducts([]);
+            } finally {
+                // Всегда устанавливаем loading в false после завершения загрузки
+                setLoading(false);
             }
-            setLoading(false);
         };
         
         loadProducts();
