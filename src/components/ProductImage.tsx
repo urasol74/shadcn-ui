@@ -55,6 +55,26 @@ export const ProductImage: React.FC<ProductImageProps> = ({
             candidates.push(`/static/pic/${baseName}-F${i}.${extension}`)
           }
         }
+      } else if (product.article) {
+        // Если нет поля image, используем article для генерации пути
+        const cleanArticle = product.article.replace(/\.K$/, '')
+        // Пробуем сначала .webp (как в базе данных), затем другие расширения
+        candidates.push(`/static/pic/${cleanArticle}.webp`)
+        candidates.push(`/static/pic/${cleanArticle}.jpg`)
+        candidates.push(`/static/pic/${cleanArticle}.jpeg`)
+        candidates.push(`/static/pic/${cleanArticle}.png`)
+        
+        // Добавляем дополнительные изображения
+        for (let i = 1; i <= maxImages; i++) {
+          candidates.push(`/static/pic/${cleanArticle}-${i}.webp`)
+          candidates.push(`/static/pic/${cleanArticle}-${i}.jpg`)
+          candidates.push(`/static/pic/${cleanArticle}-${i}.jpeg`)
+          candidates.push(`/static/pic/${cleanArticle}-${i}.png`)
+          candidates.push(`/static/pic/${cleanArticle}-F${i}.webp`)
+          candidates.push(`/static/pic/${cleanArticle}-F${i}.jpg`)
+          candidates.push(`/static/pic/${cleanArticle}-F${i}.jpeg`)
+          candidates.push(`/static/pic/${cleanArticle}-F${i}.png`)
+        }
       }
       
       // Плейсхолдер в конце (только для основного изображения, не для галереи)
@@ -156,9 +176,9 @@ export const ProductImage: React.FC<ProductImageProps> = ({
       // Отладочная информация
       console.log('ProductImage component received product:', product);
       
-      // Проверяем, есть ли у продукта поле image
-      if (!product || !product.image) {
-        console.log('Product has no image field or product is null');
+      // Проверяем, есть ли у продукта данные
+      if (!product) {
+        console.log('Product is null');
         if (mounted) {
           setValidImages([]);
           setLoading(false);
