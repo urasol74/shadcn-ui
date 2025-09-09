@@ -6,7 +6,7 @@ import ProductCard from '@/components/ProductCard';
 import ProductImage from '@/components/ProductImage';
 import { getProductsByGender, getCategories } from '@/lib/database';
 import { supabaseApi } from '@/lib/supabase-api';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import React from 'react';
 
 export default function HomePage() {
@@ -21,21 +21,8 @@ export default function HomePage() {
   const [seasons, setSeasons] = useState([]);
   const [debugOpen, setDebugOpen] = useState(false);
   const navigate = useNavigate();
-  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    // Создаем Web Worker для обработки данных
-    workerRef.current = new Worker(new URL('../workers/dataProcessor.worker.ts', import.meta.url));
-
-    workerRef.current.onmessage = (event) => {
-      const { result, operation } = event.data;
-      switch (operation) {
-        case 'processProducts':
-          setRandomProducts(result);
-          break;
-      }
-    };
-
     let isMounted = true;
     
     // Загружаем рекомендуемые товары из Supabase с распределением по гендерам
@@ -43,15 +30,7 @@ export default function HomePage() {
       try {
         const products = await supabaseApi.getRecommendedProducts();
         if (isMounted) {
-          // Отправляем данные в Web Worker для обработки
-          if (workerRef.current) {
-            workerRef.current.postMessage({ 
-              data: products, 
-              operation: 'processProducts' 
-            });
-          } else {
-            setRandomProducts(products);
-          }
+          setRandomProducts(products);
         }
       } catch (error) {
         console.error('Failed to load recommended products from Supabase:', error);
@@ -82,10 +61,6 @@ export default function HomePage() {
     
     return () => {
       isMounted = false;
-      // Очищаем Web Worker при размонтировании компонента
-      if (workerRef.current) {
-        workerRef.current.terminate();
-      }
     };
   }, []);
 

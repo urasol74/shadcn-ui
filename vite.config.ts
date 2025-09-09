@@ -16,6 +16,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Настройка сервера для внешних соединений
+  server: {
+    host: true, // Позволяет принимать соединения с любого IP
+    port: 5173,
+  },
   // Оптимизация для production сборки
   build: {
     rollupOptions: {

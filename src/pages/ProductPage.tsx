@@ -25,6 +25,9 @@ const ProductPage = () => {
       try {
         const data = await supabaseApi.getProduct(article);
         
+        console.log('Product data from Supabase:', data); // Для отладки
+        console.log('Product image field:', data?.product?.image); // Для отладки
+        
         if (data && data.product) {
           setProduct(data.product);
           setVariants(Array.isArray(data.variants) ? data.variants : []);

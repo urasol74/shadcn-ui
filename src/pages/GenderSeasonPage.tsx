@@ -423,12 +423,33 @@ export default function GenderSeasonPage() {
                                                             decoding="async"
                                                             onError={(e) => {
                                                                 const img = e.target as HTMLImageElement;
-                                                                img.src = '/static/pic/placeholder.jpg';
+                                                                // Проверяем расширение файла из базы данных
+                                                                const imageFileName = product.image;
+                                                                const ext = imageFileName.split('.').pop()?.toLowerCase() || 'webp';
+                                                                
+                                                                // Пытаемся загрузить изображение с тем же расширением
+                                                                const cleanArticle = product.article.replace(/\.K$/, '');
+                                                                img.src = `/static/pic/${cleanArticle}.${ext}`;
+                                                                
+                                                                // Если не удалось, пробуем другие расширения
+                                                                img.onerror = () => {
+                                                                    if (img.src.includes(`.${ext}`)) {
+                                                                        img.src = `/static/pic/${cleanArticle}.webp`;
+                                                                    } else if (img.src.includes('.webp')) {
+                                                                        img.src = `/static/pic/${cleanArticle}.jpg`;
+                                                                    } else if (img.src.includes('.jpg')) {
+                                                                        img.src = `/static/pic/${cleanArticle}.jpeg`;
+                                                                    } else if (img.src.includes('.jpeg')) {
+                                                                        img.src = `/static/pic/${cleanArticle}.png`;
+                                                                    } else {
+                                                                        img.src = '/static/pic/placeholder.jpg';
+                                                                    }
+                                                                };
                                                             }}
                                                         />
                                                     ) : (
                                                         <img 
-                                                            src={`/static/pic/${product.article.replace(/\.K$/, '')}.jpg`}
+                                                            src={`/static/pic/${product.article.replace(/\.K$/, '')}.webp`}
                                                             className="w-full h-full object-contain" 
                                                             alt={product.name || product.article}
                                                             loading="lazy"
@@ -436,7 +457,9 @@ export default function GenderSeasonPage() {
                                                             onError={(e) => {
                                                                 const img = e.target as HTMLImageElement;
                                                                 const cleanArticle = product.article.replace(/\.K$/, '');
-                                                                if (img.src.includes('.jpg')) {
+                                                                if (img.src.includes('.webp')) {
+                                                                    img.src = `/static/pic/${cleanArticle}.jpg`;
+                                                                } else if (img.src.includes('.jpg')) {
                                                                     img.src = `/static/pic/${cleanArticle}.jpeg`;
                                                                 } else if (img.src.includes('.jpeg')) {
                                                                     img.src = `/static/pic/${cleanArticle}.png`;
