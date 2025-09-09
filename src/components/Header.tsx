@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import LiveSearch from './LiveSearch';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -14,38 +14,36 @@ const Header = () => {
   const [womenCategories, setWomenCategories] = useState([]);
   const [boyCategories, setBoyCategories] = useState([]);
   const [girlCategories, setGirlCategories] = useState([]);
-  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    // Создаем Web Worker для обработки категорий
-    workerRef.current = new Worker(new URL('../workers/dataProcessor.worker.ts', import.meta.url));
-
-    workerRef.current.onmessage = (event) => {
-      const { result, operation } = event.data;
-      switch (operation) {
-        case 'processCategories':
-          // Распределяем результаты по соответствующим состояниям
-          // В реальной реализации здесь будет логика распределения
-          break;
-      }
-    };
-
     // Загружаем категории с минимальной блокировкой основного потока
     Promise.all([
-      fetch('http://178.212.198.23:3001/api/categories?gender=чол').then(res => res.json()),
-      fetch('http://178.212.198.23:3001/api/categories?gender=жiн').then(res => res.json()),
-      fetch('http://178.212.198.23:3001/api/categories?gender=хлопч').then(res => res.json()),
-      fetch('http://178.212.198.23:3001/api/categories?gender=дiвч').then(res => res.json())
+      fetch('http://178.212.198.23:3001/api/categories?gender=чол')
+        .then(res => res.json())
+        .catch(err => {
+          console.error('Failed to load men categories:', err);
+          return [];
+        }),
+      fetch('http://178.212.198.23:3001/api/categories?gender=жiн')
+        .then(res => res.json())
+        .catch(err => {
+          console.error('Failed to load women categories:', err);
+          return [];
+        }),
+      fetch('http://178.212.198.23:3001/api/categories?gender=хлопч')
+        .then(res => res.json())
+        .catch(err => {
+          console.error('Failed to load boy categories:', err);
+          return [];
+        }),
+      fetch('http://178.212.198.23:3001/api/categories?gender=дiвч')
+        .then(res => res.json())
+        .catch(err => {
+          console.error('Failed to load girl categories:', err);
+          return [];
+        })
     ])
     .then(([men, women, boy, girl]) => {
-      // Отправляем данные в Web Worker для обработки
-      if (workerRef.current) {
-        workerRef.current.postMessage({ 
-          data: { men, women, boy, girl }, 
-          operation: 'processCategories' 
-        });
-      }
-      
       setMenCategories(men);
       setWomenCategories(women);
       setBoyCategories(boy);
@@ -54,13 +52,6 @@ const Header = () => {
     .catch(error => {
       console.error('Failed to load categories:', error);
     });
-
-    // Очищаем Web Worker при размонтировании компонента
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-      }
-    };
   }, []);
 
   // Хук для управления hover
