@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { supabaseApi } from '@/lib/supabase-api';
 
 const Header = () => {
   const [menCategories, setMenCategories] = useState([]);
@@ -16,42 +17,26 @@ const Header = () => {
   const [girlCategories, setGirlCategories] = useState([]);
 
   useEffect(() => {
-    // Загружаем категории с минимальной блокировкой основного потока
-    Promise.all([
-      fetch('http://178.212.198.23:3001/api/categories?gender=чол')
-        .then(res => res.json())
-        .catch(err => {
-          console.error('Failed to load men categories:', err);
-          return [];
-        }),
-      fetch('http://178.212.198.23:3001/api/categories?gender=жiн')
-        .then(res => res.json())
-        .catch(err => {
-          console.error('Failed to load women categories:', err);
-          return [];
-        }),
-      fetch('http://178.212.198.23:3001/api/categories?gender=хлопч')
-        .then(res => res.json())
-        .catch(err => {
-          console.error('Failed to load boy categories:', err);
-          return [];
-        }),
-      fetch('http://178.212.198.23:3001/api/categories?gender=дiвч')
-        .then(res => res.json())
-        .catch(err => {
-          console.error('Failed to load girl categories:', err);
-          return [];
-        })
-    ])
-    .then(([men, women, boy, girl]) => {
-      setMenCategories(men);
-      setWomenCategories(women);
-      setBoyCategories(boy);
-      setGirlCategories(girl);
-    })
-    .catch(error => {
-      console.error('Failed to load categories:', error);
-    });
+    // Загружаем категории с использованием Supabase API
+    const loadCategories = async () => {
+      try {
+        const [men, women, boy, girl] = await Promise.all([
+          supabaseApi.getCategories('чол'),
+          supabaseApi.getCategories('жiн'),
+          supabaseApi.getCategories('хлопч'),
+          supabaseApi.getCategories('дiвч')
+        ]);
+        
+        setMenCategories(men);
+        setWomenCategories(women);
+        setBoyCategories(boy);
+        setGirlCategories(girl);
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      }
+    };
+
+    loadCategories();
   }, []);
 
   // Хук для управления hover

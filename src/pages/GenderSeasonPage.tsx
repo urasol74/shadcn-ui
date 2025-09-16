@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,48 +7,114 @@ import { supabase } from '@/lib/supabase';
 import { supabaseApi } from '@/lib/supabase-api';
 
 export default function GenderSeasonPage() {
-    const { season, gender } = useParams();
+    const { season, gender, categoryId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
 
-    const [seasons, setSeasons] = useState<string[]>([]);
-    const [selectedSeason, setSelectedSeason] = useState<string | null>(season || null);
-    const [selectedGender, setSelectedGender] = useState<string | null>(gender || null);
+    // Декодируем параметр season, если он есть
+    // Правильно декодируем URL-encoded значения
+    const decodedSeason = season ? decodeURIComponent(season) : null;
+    
+    // Добавим эффект для отладки параметров
+    useEffect(() => {
+        console.log('Параметры маршрута изменились:', { season, gender, categoryId, decodedSeason });
+        console.log('Типы параметров:', { 
+            season: typeof season, 
+            gender: typeof gender, 
+            categoryId: typeof categoryId,
+            decodedSeason: typeof decodedSeason 
+        });
+        console.log('Полный location:', location);
+    }, [season, gender, categoryId, decodedSeason, location]);
+
+    const [seasons, setSeasons] = useState<string[]>([]); // Все сезоны для коллекции
+    const [seasonsWithProducts, setSeasonsWithProducts] = useState<string[]>([]); // Сезоны с товарами по выбранной категории
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [showCategories, setShowCategories] = useState<boolean>(false);
+    const [isProduct, setIsProduct] = useState<boolean | null>(null); // null = не определено, true = товар, false = сезон
+    const [productData, setProductData] = useState<any>(null); // Данные товара, если это товар
     
     // Состояние для сортировки по цене
     const [priceSortOrder, setPriceSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
 
-    // Загрузка категорий через Supabase
+    // Проверка, является ли season настоящим сезоном или артикулом товара
     useEffect(() => {
-        const activeGenderForCategories = gender ?? selectedGender;
-        if (!activeGenderForCategories) return;
+        // Если у нас есть categoryId, это точно не товар
+        if (categoryId) {
+            setIsProduct(false);
+            return;
+        }
         
-        const loadCategories = async () => {
-            try {
-                const cats = await supabaseApi.getCategories(activeGenderForCategories);
-                setCategories(cats);
-            } catch (error) {
-                console.error('Categories loading failed:', error);
-                setCategories([]);
-            }
-        };
+        // Если season равен "all", это точно не товар
+        if (decodedSeason === 'all') {
+            setIsProduct(false);
+            return;
+        }
         
-        loadCategories();
-    }, [gender, selectedGender]);
+        // Если season совпадает с одним из известных сезонов, это точно сезон
+        if (decodedSeason && seasons.includes(decodedSeason)) {
+            setIsProduct(false);
+            return;
+        }
+        
+        // Если season не совпадает с известными сезонами, проверяем, является ли он артикулом товара
+        if (decodedSeason) {
+            const checkIfProductExists = async () => {
+                try {
+                    console.log('Проверка, является ли параметр товаром:', decodedSeason);
+                    const productData = await supabaseApi.getProduct(decodedSeason);
+                    
+                    if (productData && productData.product) {
+                        console.log('Найден товар:', productData.product);
+                        setIsProduct(true);
+                        setProductData(productData);
+                    } else {
+                        console.log('Товар не найден, считаем параметр сезоном');
+                        setIsProduct(false);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при проверке товара:', error);
+                    // Если ошибка, считаем, что это сезон
+                    setIsProduct(false);
+                }
+            };
+            
+            checkIfProductExists();
+        } else {
+            // Если нет decodedSeason, это не товар
+            setIsProduct(false);
+        }
+    }, [decodedSeason, gender, categoryId, seasons]);
 
-    // Загрузка сезонов через Supabase
+    // Загрузка сезонов через Supabase для текущей коллекции
     useEffect(() => {
-        const activeGenderForSeasons = gender ?? selectedGender;
+        if (!gender || isProduct) return; // Не загружаем сезоны, если это товар
         
         const loadSeasons = async () => {
             try {
-                const seasonsData = await supabaseApi.getSeasons(activeGenderForSeasons);
-                const seasonsList = seasonsData.map(item => item.season);
-                setSeasons(seasonsList);
+                console.log('Загрузка сезонов для коллекции:', gender);
+                // Получаем уникальные сезоны для текущего пола
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('season')
+                    .eq('gender', gender) // Используем точное совпадение
+                    .not('season', 'is', null)
+                    .not('season', 'eq', '');
+
+                if (error) {
+                    console.error('Seasons loading error:', error);
+                    setSeasons([]);
+                    return;
+                }
+
+                console.log('Полученные сезоны:', data);
+                // Получаем уникальные значения сезонов
+                const uniqueSeasons = [...new Set(data?.map(item => item.season).filter(Boolean))] as string[];
+                console.log('Уникальные сезоны:', uniqueSeasons);
+                setSeasons(uniqueSeasons);
             } catch (error) {
                 console.error('Seasons loading failed:', error);
                 setSeasons([]);
@@ -56,21 +122,149 @@ export default function GenderSeasonPage() {
         };
         
         loadSeasons();
-    }, [gender, selectedGender]);
+    }, [gender, isProduct]);
 
+    // Загрузка сезонов с товарами по выбранной категории
     useEffect(() => {
-        setSelectedSeason(season || null);
-        setSelectedGender(gender || null);
-    }, [season, gender]);
+        if (!gender || isProduct) return; // Не загружаем сезоны, если это товар
+        
+        const loadSeasonsWithProducts = async () => {
+            try {
+                console.log('Загрузка сезонов с товарами для коллекции:', gender, 'категория:', selectedCategory);
+                let query = supabase
+                    .from('products')
+                    .select('season')
+                    .eq('gender', gender) // Используем точное совпадение
+                    .not('season', 'is', null)
+                    .not('season', 'eq', '')
+                    .gt('variants.stock', 0); // Только товары в наличии
+
+                // Если выбрана категория, фильтруем по ней
+                if (selectedCategory) {
+                    query = query.eq('category_id', selectedCategory);
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    console.error('Seasons with products loading error:', error);
+                    setSeasonsWithProducts([]);
+                    return;
+                }
+
+                console.log('Полученные сезоны с товарами:', data);
+                // Получаем уникальные значения сезонов
+                const uniqueSeasons = [...new Set(data?.map(item => item.season).filter(Boolean))] as string[];
+                console.log('Уникальные сезоны с товарами:', uniqueSeasons);
+                setSeasonsWithProducts(uniqueSeasons);
+            } catch (error) {
+                console.error('Seasons with products loading failed:', error);
+                setSeasonsWithProducts([]);
+            }
+        };
+        
+        loadSeasonsWithProducts();
+    }, [gender, selectedCategory, isProduct]);
+
+    // Загрузка категорий
+    useEffect(() => {
+        if (!gender || isProduct) return; // Не загружаем категории, если это товар
+        
+        const loadCategories = async () => {
+            try {
+                console.log('Загрузка категорий для коллекции:', gender, 'сезон:', decodedSeason);
+                console.log('Подготовка запроса категорий с параметрами:', { gender, decodedSeason });
+                
+                // Если у нас есть конкретный сезон (не "all"), загружаем категории с товарами для этого сезона
+                if (decodedSeason && decodedSeason !== 'all') {
+                    let query = supabase
+                        .from('products')
+                        .select(`
+                            category_id,
+                            categories(name)
+                        `)
+                        .eq('gender', gender) // Используем точное совпадение
+                        .gt('variants.stock', 0) // Только товары в наличии
+                        .eq('season', decodedSeason); // Фильтр по сезону
+                    
+                    console.log('Запрос к Supabase для категорий:', query);
+
+                    const { data, error } = await query;
+
+                    if (error) {
+                        console.error('Categories with products loading error:', error);
+                        // В случае ошибки загружаем все категории
+                        const allCats = await supabaseApi.getCategories(gender);
+                        setCategories(allCats);
+                        return;
+                    }
+
+                    console.log('Полученные категории с товарами:', data);
+                    // Получаем уникальные категории
+                    const uniqueCategories = (data && data.length > 0) ? data.reduce((acc, item) => {
+                        if (item.category_id && !acc.find((cat: any) => cat.id === item.category_id)) {
+                            acc.push({
+                                id: item.category_id,
+                                name: (item.categories as any)?.name || ''
+                            });
+                        }
+                        return acc;
+                    }, [] as Array<{id: number, name: string}>) : [];
+                    
+                    console.log('Уникальные категории с товарами:', uniqueCategories);
+                    setCategories(uniqueCategories);
+                } else {
+                    // Если у нас "все сезоны" или нет сезона, загружаем все категории
+                    const allCats = await supabaseApi.getCategories(gender);
+                    setCategories(allCats);
+                }
+            } catch (error) {
+                console.error('Categories loading failed:', error);
+                // В случае ошибки пробуем загрузить все категории
+                try {
+                    const allCats = await supabaseApi.getCategories(gender);
+                    setCategories(allCats);
+                } catch (fallbackError) {
+                    console.error('Fallback categories loading failed:', fallbackError);
+                    setCategories([]);
+                }
+            }
+        };
+        
+        loadCategories();
+    }, [gender, decodedSeason, isProduct]);
+    
+    // Отладочный вывод
+    useEffect(() => {
+        console.log('seasons:', seasons);
+        console.log('seasonsWithProducts:', seasonsWithProducts);
+        console.log('selectedCategory:', selectedCategory);
+    }, [seasons, seasonsWithProducts, selectedCategory]);
+
+    // Сброс всех фильтров при смене коллекции (только при фактической смене коллекции)
+    useEffect(() => {
+        // Сбрасываем выбранную категорию только если это действительно новая коллекция
+        setSelectedCategory(null);
+    }, [gender]);
+
+    // Установка выбранной категории из параметров URL
+    useEffect(() => {
+        if (categoryId) {
+            setSelectedCategory(categoryId);
+        } else {
+            setSelectedCategory(null);
+        }
+    }, [categoryId]);
 
     // Загрузка продуктов через Supabase
     useEffect(() => {
-        if (!selectedGender && !gender) return;
+        console.log('useEffect для загрузки товаров сработал с параметрами:', { gender, season, decodedSeason, categoryId, isProduct });
+        if (!gender || isProduct === true) return; // Не загружаем товары, если это товар
         
         const loadProducts = async () => {
             setLoading(true);
             try {
-                const activeGender = gender ?? selectedGender;
+                console.log('Загрузка товаров для:', { gender, season: decodedSeason, categoryId });
                 
                 let query = supabase
                     .from('products')
@@ -85,21 +279,28 @@ export default function GenderSeasonPage() {
                         image,
                         variants!inner(purchase_price, sale_price, discount, stock)
                     `)
-                    .ilike('gender', activeGender)
+                    .eq('gender', gender) // Используем точное совпадение вместо ilike
                     .gt('variants.stock', 0);
 
                 // Фильтр по категории если выбрана
-                if (selectedCategory) {
-                    query = query.eq('category_id', selectedCategory);
+                if (categoryId) {
+                    query = query.eq('category_id', categoryId);
                 }
 
-                // Фильтр по сезону если есть
-                if (season || selectedSeason) {
-                    const currentSeason = season || selectedSeason;
-                    query = query.ilike('season', `%${currentSeason}%`);
+                // Фильтр по сезону если есть (кроме "all")
+                if (decodedSeason && isProduct === false && decodedSeason !== 'all') {
+                    console.log('Применяем фильтр по сезону:', decodedSeason);
+                    console.log('Тип параметра decodedSeason:', typeof decodedSeason);
+                    // Используем точное совпадение для более надежной фильтрации
+                    query = query.eq('season', decodedSeason);
+                } else {
+                    console.log('Фильтр по сезону не применяется');
                 }
 
-                const { data, error } = await query.limit(100);
+                const { data, error } = await query.limit(200);
+                
+                console.log('Запрос к Supabase:', query);
+                console.log('Результат:', { data, error });
 
                 if (error) {
                     console.error('Products loading error:', error);
@@ -108,18 +309,33 @@ export default function GenderSeasonPage() {
                 }
 
                 if (!data || data.length === 0) {
+                    console.log('Нет данных для отображения');
                     setProducts([]);
                     return;
                 }
+                
+                console.log('Полученные данные из Supabase:', data.length, 'товаров');
 
                 // Обрабатываем результаты как в SupabaseTest
                 const result: any[] = [];
                 
-                data.forEach(product => {
-                    if (!product.variants || product.variants.length === 0) return;
+                data.forEach((product, index) => {
+                    console.log(`Обработка товара ${index + 1}:`, product.article, product.name);
+                    if (!product.variants || product.variants.length === 0) {
+                        console.log('Нет вариантов для товара:', product.article);
+                        return;
+                    }
                     
-                    product.variants.forEach((variant: any) => {
+                    product.variants.forEach((variant: any, variantIndex) => {
+                        console.log(`Вариант ${variantIndex + 1} для товара ${product.article}:`, variant);
                         const price = variant.sale_price || variant.purchase_price || 0;
+                        console.log(`Цена варианта: ${price}, Наличие: ${variant.stock}`);
+                        
+                        // Проверяем наличие на складе
+                        if (variant.stock <= 0) {
+                            console.log(`Вариант ${variantIndex + 1} товара ${product.article} отсутствует на складе`);
+                            return;
+                        }
                         
                         if (price > 0) {
                             // Проверяем, нет ли уже этого продукта с той же ценой
@@ -157,8 +373,44 @@ export default function GenderSeasonPage() {
             }
         };
         
-        loadProducts();
-    }, [season, gender, selectedCategory, selectedGender, selectedSeason]);
+        // Не загружаем товары, если еще не определено, что это за параметр
+        if (isProduct !== null) {
+            loadProducts();
+        }
+    }, [decodedSeason, gender, categoryId, isProduct]);
+
+    // Если еще не определено, что это за параметр, показываем загрузку
+    if (isProduct === null && (decodedSeason || categoryId)) {
+        return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Проверка...</div>;
+    }
+
+    // Если это товар, отображаем страницу товара
+    if (isProduct === true && productData) {
+        // Здесь должна быть логика отображения страницы товара
+        // Но так как у нас уже есть отдельный компонент ProductPage, 
+        // мы можем просто перенаправить на него
+        // Однако, чтобы избежать бесконечного цикла, мы не будем перенаправлять,
+        // а отобразим страницу товара прямо здесь
+        
+        // Импортируем логику отображения товара из ProductPage
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <Header />
+                <div className="container mx-auto px-4 py-8">
+                    <div className="mb-4 flex items-center gap-3">
+                        <Button onClick={() => navigate(-1)} variant="ghost">← Назад</Button>
+                        <Link to="/"><Button variant="outline">Домой</Button></Link>
+                    </div>
+                    <div className="text-center">
+                        <h1>Страница товара</h1>
+                        <p>Артикул: {productData.product?.article}</p>
+                        <p>Название: {productData.product?.name}</p>
+                        {/* Здесь должна быть полная реализация страницы товара */}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const getGenderTitle = (g: string) => {
         switch (g) {
@@ -169,6 +421,21 @@ export default function GenderSeasonPage() {
             case 'дівч': return 'Коллекция для девочек'; // украинская і (для совместимости)
             default: return 'Коллекция';
         }
+    };
+
+    // Функция для получения списка всех коллекций
+    const getAllGenders = () => {
+        return [
+            { id: 'чол', name: 'Он' },
+            { id: 'жiн', name: 'Она' },
+            { id: 'хлопч', name: 'Мальчик' },
+            { id: 'дiвч', name: 'Девочка' }
+        ];
+    };
+
+    // Функция для получения списка коллекций, кроме текущей
+    const getOtherGenders = () => {
+        return getAllGenders().filter(g => g.id !== gender);
     };
 
     const formatPrice = (v: any) => {
@@ -208,352 +475,185 @@ export default function GenderSeasonPage() {
         return `${n}%`;
     };
 
-    // Функция для определения цены для сортировки
-    const getProductSortPrice = (product: any) => {
-        // Если есть скидка (discount > 0), берем sale_price
-        // Иначе берем purchase_price
-        if (product.discount && Number(product.discount) > 0) {
-            return Number(String(product.sale_price || 0).replace(/,/g, '')) || 0;
+    // Функция для получения ссылки на другой сезон
+    const getSeasonLink = (seasonName: string) => {
+        if (categoryId) {
+            return `/gender/${gender}/season/${encodeURIComponent(seasonName)}/category/${categoryId}`;
         }
-        return Number(String(product.purchase_price || 0).replace(/,/g, '')) || 0;
+        return `/gender/${gender}/season/${encodeURIComponent(seasonName)}`;
     };
 
-    // Функция сортировки по цене
-    const sortProductsByPrice = (products: any[]) => {
-        if (priceSortOrder === 'none') return products;
-        
-        return [...products].sort((a, b) => {
-            const priceA = getProductSortPrice(a);
-            const priceB = getProductSortPrice(b);
-            
-            if (priceSortOrder === 'asc') {
-                return priceA - priceB; // от низких к высоким
-            } else {
-                return priceB - priceA; // от высоких к низким
-            }
-        });
+    // Функция для получения ссылки на другую категорию
+    const getCategoryLink = (categoryId: string) => {
+        if (decodedSeason && decodedSeason !== 'all') {
+            return `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}/category/${categoryId}`;
+        }
+        return `/gender/${gender}/season/all/category/${categoryId}`;
     };
 
-    // Обработчик клика по кнопкам сортировки
-    const handlePriceSortClick = (direction: 'asc' | 'desc') => {
-        if (priceSortOrder === direction) {
-            // Если кликнули по уже активной кнопке - отключаем сортировку
-            setPriceSortOrder('none');
-        } else {
-            setPriceSortOrder(direction);
+    // Функция для получения ссылки на все категории
+    const getAllCategoriesLink = () => {
+        if (decodedSeason && decodedSeason !== 'all') {
+            return `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}`;
         }
+        return `/gender/${gender}/season/all`;
     };
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
-            <div className="container mx-auto px-4 py-8">
-                {/* Breadcrumb */}
-                <nav className="mb-8">
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <Link to="/" className="hover:text-foreground">Главная</Link>
-                        <span>/</span>
-                        {gender ? (
-                            <Link to={`/gender/${gender}`} className="hover:text-foreground">{getGenderTitle(String(gender))}</Link>
-                        ) : (
-                            <span className="text-muted-foreground">{getGenderTitle(String(selectedGender || ''))}</span>
-                        )}
-                        {season && (
-                            <>
-                                <span>/</span>
-                                <span className="text-foreground">{season}</span>
-                            </>
-                        )}
-                    </div>
-                </nav>
-                <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button onClick={() => navigate(-1)} variant="ghost">← Назад</Button>
-                        <Link to="/"><Button variant="outline">Домой</Button></Link>
+            
+            {/* Заголовок коллекции */}
+            <div className="bg-white border-b">
+                <div className="container mx-auto px-4 py-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            {getGenderTitle(gender || '')}
+                        </h1>
+                        
+                        {/* Кнопки переключения коллекций */}
+                        <div className="flex flex-wrap gap-2">
+                            {getOtherGenders().map((g) => (
+                                <Link
+                                    key={g.id}
+                                    to={`/gender/${g.id}/season/all`}
+                                    className="px-3 py-1 rounded-full text-sm bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                >
+                                    {g.name}
+                                </Link>
+                            ))}
+                        </div>
                     </div>
                     
-                    {/* Фильтр сортировки по цене */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Цена:</span>
-                        <div className="flex items-center gap-1">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handlePriceSortClick('asc')}
-                                className={`p-2 h-8 w-8 ${priceSortOrder === 'asc' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                title="Сортировать по возрастанию цены"
+                    {/* Навигация по сезонам */}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Link 
+                            to={`/gender/${gender}/season/all`}
+                            className={`px-3 py-1 rounded-full text-sm ${
+                                !decodedSeason || decodedSeason === 'all' 
+                                    ? 'bg-green-600 text-white' 
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            Все сезоны
+                        </Link>
+                        
+                        {seasons.map((seasonName) => (
+                            <Link
+                                key={seasonName}
+                                to={getSeasonLink(seasonName)}
+                                className={`px-3 py-1 rounded-full text-sm ${
+                                    decodedSeason === seasonName
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
                             >
-                                ↑
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handlePriceSortClick('desc')}
-                                className={`p-2 h-8 w-8 ${priceSortOrder === 'desc' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                title="Сортировать по убыванию цены"
+                                {seasonName}
+                            </Link>
+                        ))}
+                    </div>
+                    
+                    {/* Навигация по категориям */}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Link
+                            to={getAllCategoriesLink()}
+                            className={`px-3 py-1 rounded-full text-sm ${
+                                !selectedCategory
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            Все категории
+                        </Link>
+                        
+                        {categories.map((category) => (
+                            <Link
+                                key={category.id}
+                                to={getCategoryLink(category.id)}
+                                className={`px-3 py-1 rounded-full text-sm ${
+                                    selectedCategory && String(selectedCategory) === String(category.id)
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
                             >
-                                ↓
-                            </Button>
-                        </div>
+                                {category.name}
+                            </Link>
+                        ))}
                     </div>
                 </div>
-
-                <div className="flex flex-col md:flex-row gap-6">
-                    {/* Left: compact categories filter (hidden on mobile, available via off-canvas) */}
-                    <aside className="hidden md:block md:w-1/4">
-                        <div className="bg-white p-3 rounded-md shadow-sm">
-                            <div className="mb-3">
-                                <span className="inline-block bg-gray-100 text-sm px-3 py-1 rounded-md font-medium">{getGenderTitle(String(gender || selectedGender || ''))}</span>
-                            </div>
-                            {loading && categories.length === 0 ? (
-                                <div className="text-sm">Загрузка...</div>
-                            ) : categories.length === 0 ? (
-                                <div className="text-sm text-muted-foreground">Нет категорий</div>
-                            ) : (
-                                <ul className="space-y-1 text-sm">
-                                    <li>
-                                        <button
-                                            className={`w-full text-left py-1.5 px-2 rounded text-sm ${selectedCategory ? '' : 'bg-gray-100'}`}
-                                            onClick={() => { setSelectedCategory(null); }}
-                                        >
-                                            Все
-                                        </button>
-                                    </li>
-                                    {categories.map(cat => (
-                                        <li key={cat.id}>
-                                            <button
-                                                className={`w-full text-left py-1.5 px-2 rounded text-sm ${selectedCategory === cat.id ? 'bg-gray-100' : ''}`}
-                                                onClick={() => { setSelectedCategory(cat.id); }}
-                                            >
-                                                {cat.name}
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                    </aside>
-
-                    {/* Main: seasons + products grid */}
-                    <main className="flex-1">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-32 flex items-center">
-                                <div className="flex items-center gap-2 md:hidden">
-                                    <button
-                                        className="p-2 rounded border bg-white"
-                                        aria-label="Показать категории"
-                                        onClick={() => setShowCategories(true)}
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <h1 className="text-3xl font-bold text-center flex-1">{getGenderTitle(String(gender || selectedGender || ''))}</h1>
-                            <div className="w-32 flex justify-end">
-                                <div className="text-sm text-gray-600">
-                                    Найдено: {products.length}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Top filter: genders (show active season as label) */}
-                        <div className="mb-6">
-                            <div className="flex items-center justify-center gap-4 mb-2">
-                                <div className="text-sm text-gray-600">Сезон:</div>
-                                <div className="px-3 py-1 rounded bg-gray-100 text-sm">{selectedSeason || season || 'Все сезоны'}</div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {['чол', 'жiн', 'хлопч', 'дiвч'].map(g => (
-                                    <button
-                                        key={g}
-                                        className={`py-1.5 px-3 rounded ${((gender === g) || (selectedGender === g)) ? 'bg-gray-200' : 'bg-white'}`}
-                                        onClick={() => {
-                                            setSelectedGender(g);
-                                            const targetSeason = encodeURIComponent(String(selectedSeason || season || '')).replace(/%20/g, '%20');
-                                            navigate(`/${g}/gender-season/${targetSeason}`);
+            </div>
+            
+            {/* Список товаров */}
+            <div className="container mx-auto px-4 py-8">
+                {loading ? (
+                    <div className="text-center py-8">Загрузка товаров...</div>
+                ) : products.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                        Товары не найдены
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        {products.map((product) => (
+                            <Card 
+                                key={product.product_id} 
+                                className="hover:shadow-lg transition-shadow cursor-pointer"
+                                onClick={() => navigate(`/gender/${gender}/season/${encodeURIComponent(product.season)}/category/${product.category_id}/${product.article}`)}
+                            >
+                                <CardContent className="p-4">
+                                    <div className="h-48 bg-gray-100 rounded-md mb-3 flex items-center justify-center">
+                                        <img 
+                                            src={product.image ? `/static/pic/${product.image}` : "/static/pic/placeholder.webp"}
+                                            alt={product.name}
+                                            className="w-full h-full object-contain"
+                                            onError={({ currentTarget }) => {
+                                                currentTarget.onerror = null;
+                                                currentTarget.src = '/static/pic/placeholder.webp';
+                                            }}
+                                        />
+                                    </div>
+                                    <h3 className="font-medium text-sm mb-1 line-clamp-2">
+                                        {product.name}
+                                    </h3>
+                                    <div className="text-xs text-gray-500 mb-2">
+                                        {product.article}
+                                    </div>
+                                    <div className="space-y-1">
+                                        {product.discount && Number(product.discount) > 0 ? (
+                                            <div className="text-gray-500 line-through text-sm">
+                                                {formatPrice(product.purchase_price)}
+                                            </div>
+                                        ) : (
+                                            <div className="invisible text-gray-500 line-through text-sm" style={{ height: '1.25rem' }}>
+                                                {formatPrice(product.purchase_price)}
+                                            </div>
+                                        )}
+                                        <div className="font-semibold text-blue-600">
+                                            {formatPrice(product.sale_price)}
+                                        </div>
+                                        {product.discount && Number(product.discount) > 0 ? (
+                                            <div className="text-red-600 text-sm">
+                                                Скидка: {formatDiscount(product.discount)}
+                                            </div>
+                                        ) : (
+                                            <div className="text-green-600 text-sm">
+                                                Новая коллекция
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="w-full mt-2"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/gender/${gender}/season/${encodeURIComponent(product.season)}/category/${product.category_id}/${product.article}`);
                                         }}
                                     >
-                                        {getGenderTitle(g)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Интерактивные сезоны */}
-                        <div className="mb-6">
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                <button
-                                    className={`py-1.5 px-3 rounded ${!selectedSeason ? 'bg-blue-200' : 'bg-white border'}`}
-                                    onClick={() => setSelectedSeason(null)}
-                                >
-                                    Все сезоны
-                                </button>
-                                {seasons.map(seasonItem => (
-                                    <button
-                                        key={seasonItem}
-                                        className={`py-1.5 px-3 rounded ${selectedSeason === seasonItem ? 'bg-blue-200' : 'bg-white border'}`}
-                                        onClick={() => setSelectedSeason(seasonItem)}
-                                    >
-                                        {seasonItem}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {loading ? (
-                            <div className="text-center">Загрузка товаров...</div>
-                        ) : products.length === 0 ? (
-                            <div className="text-center text-gray-500">Нет товаров по выбранным фильтрам.</div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {sortProductsByPrice(products).map((product: any) => (
-                                    <Link 
-                                        key={product.product_id ?? product.id ?? product.article}
-                                        to={`/category/${gender || selectedGender}/${product.category_id}/${product.article}`}
-                                        className="block"
-                                    >
-                                        <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                                            <CardContent className="p-4 text-center">
-                                                <div className="w-full h-48 bg-gray-100 mb-4 flex items-center justify-center rounded overflow-hidden">
-                                                    {/* Используем поле image из products для отображения изображения */}
-                                                    {product.image ? (
-                                                        <img 
-                                                            src={`/static/pic/${product.image}`}
-                                                            className="w-full h-full object-contain" 
-                                                            alt={product.name || product.article}
-                                                            loading="lazy"
-                                                            decoding="async"
-                                                            onError={(e) => {
-                                                                const img = e.target as HTMLImageElement;
-                                                                // Проверяем расширение файла из базы данных
-                                                                const imageFileName = product.image;
-                                                                const ext = imageFileName.split('.').pop()?.toLowerCase() || 'webp';
-                                                                
-                                                                // Пытаемся загрузить изображение с тем же расширением
-                                                                const cleanArticle = product.article.replace(/\.K$/, '');
-                                                                img.src = `/static/pic/${cleanArticle}.${ext}`;
-                                                                
-                                                                // Если не удалось, пробуем другие расширения
-                                                                img.onerror = () => {
-                                                                    if (img.src.includes(`.${ext}`)) {
-                                                                        img.src = `/static/pic/${cleanArticle}.webp`;
-                                                                    } else if (img.src.includes('.webp')) {
-                                                                        img.src = `/static/pic/${cleanArticle}.jpg`;
-                                                                    } else if (img.src.includes('.jpg')) {
-                                                                        img.src = `/static/pic/${cleanArticle}.jpeg`;
-                                                                    } else if (img.src.includes('.jpeg')) {
-                                                                        img.src = `/static/pic/${cleanArticle}.png`;
-                                                                    } else {
-                                                                        img.src = '/static/pic/placeholder.jpg';
-                                                                    }
-                                                                };
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <img 
-                                                            src={`/static/pic/${product.article.replace(/\.K$/, '')}.webp`}
-                                                            className="w-full h-full object-contain" 
-                                                            alt={product.name || product.article}
-                                                            loading="lazy"
-                                                            decoding="async"
-                                                            onError={(e) => {
-                                                                const img = e.target as HTMLImageElement;
-                                                                const cleanArticle = product.article.replace(/\.K$/, '');
-                                                                if (img.src.includes('.webp')) {
-                                                                    img.src = `/static/pic/${cleanArticle}.jpg`;
-                                                                } else if (img.src.includes('.jpg')) {
-                                                                    img.src = `/static/pic/${cleanArticle}.jpeg`;
-                                                                } else if (img.src.includes('.jpeg')) {
-                                                                    img.src = `/static/pic/${cleanArticle}.png`;
-                                                                } else {
-                                                                    img.src = '/static/pic/placeholder.jpg';
-                                                                }
-                                                            }}
-                                                        />
-                                                    )}
-                                                </div>
-                                                <div className="text-center mb-3 text-base font-medium text-foreground hover:text-blue-600">
-                                                    {product.name}
-                                                </div>
-                                                
-                                                <div className="space-y-2 text-sm">
-                                                    {/* Резервируем место для старой цены для симметрии */}
-                                                    {(product.purchase_price) && (product.discount) && Number(product.discount) > 0 ? (
-                                                        <div className="text-gray-500 line-through">
-                                                            Старая цена: {formatPrice(product.purchase_price)}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-transparent select-none" aria-hidden="true">
-                                                            .
-                                                        </div>
-                                                    )}
-                                                    <div className="font-semibold text-lg text-blue-600">
-                                                        Цена: {formatPrice(product.sale_price)}
-                                                    </div>
-                                                    
-                                                    {/* Отображение скидки или "Новая коллекция" */}
-                                                    {(product.discount) ? (
-                                                        Number(product.discount) > 0 ? (
-                                                            <div className="text-red-600 font-medium">
-                                                                Скидка: {formatDiscount(product.discount)}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-green-600 font-medium">
-                                                                Новая коллекция
-                                                            </div>
-                                                        )
-                                                    ) : (
-                                                        <div className="text-green-600 font-medium">
-                                                            Новая коллекция
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </main>
-                </div>
-                {/* Off-canvas categories panel for mobile */}
-                {showCategories && (
-                    <div className="fixed inset-0 z-50 flex">
-                        <div className="fixed inset-0 bg-black bg-opacity-40" onClick={() => setShowCategories(false)}></div>
-                        <div className="relative w-80 max-w-full bg-white h-full shadow-xl p-4 overflow-auto">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="text-lg font-medium">Категории</div>
-                                <button className="p-2" onClick={() => setShowCategories(false)} aria-label="Закрыть">✕</button>
-                            </div>
-                            <div>
-                                {loading && categories.length === 0 ? (
-                                    <div className="text-sm">Загрузка...</div>
-                                ) : categories.length === 0 ? (
-                                    <div className="text-sm text-muted-foreground">Нет категорий</div>
-                                ) : (
-                                    <ul className="space-y-1 text-sm">
-                                        <li>
-                                            <button
-                                                className={`w-full text-left py-1.5 px-2 rounded text-sm ${selectedCategory ? '' : 'bg-gray-100'}`}
-                                                onClick={() => { setSelectedCategory(null); setShowCategories(false); }}
-                                            >
-                                                Все
-                                            </button>
-                                        </li>
-                                        {categories.map(cat => (
-                                            <li key={cat.id}>
-                                                <button
-                                                    className={`w-full text-left py-1.5 px-2 rounded text-sm ${selectedCategory === cat.id ? 'bg-gray-100' : ''}`}
-                                                    onClick={() => { setSelectedCategory(cat.id); setShowCategories(false); }}
-                                                >
-                                                    {cat.name}
-                                                </button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        </div>
+                                        Подробнее
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ))}
                     </div>
                 )}
             </div>

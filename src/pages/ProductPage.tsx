@@ -11,19 +11,24 @@ import { supabaseApi } from '@/lib/supabase-api';
 
 const ProductPage = () => {
   const navigate = useNavigate();
-  const { article } = useParams();
+  const { gender, season, categoryId, article } = useParams();
   const [product, setProduct] = useState(null);
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
-    if (!article) return;
+    console.log('ProductPage params:', { gender, season, categoryId, article }); // Для отладки
+    
+    // Определяем реальный article - это параметр article
+    const realArticle = article;
+    
+    if (!realArticle) return;
     
     const loadProduct = async () => {
       setLoading(true);
       try {
-        const data = await supabaseApi.getProduct(article);
+        const data = await supabaseApi.getProduct(realArticle);
         
         console.log('Product data from Supabase:', data); // Для отладки
         console.log('Product image field:', data?.product?.image); // Для отладки
@@ -44,7 +49,7 @@ const ProductPage = () => {
     };
     
     loadProduct();
-  }, [article]);
+  }, [article, gender, season, categoryId]);
 
   // Группировка вариантов по color
   const colorMap = {};
@@ -113,13 +118,56 @@ const ProductPage = () => {
   const displaySale = product.sale_price ?? variantWithPrice?.sale_price ?? '-';
   const displayDiscount = (product.discount ?? variantWithPrice?.discount);
 
+  // Функция для определения пути назад в зависимости от контекста
+  const getBackPath = () => {
+    // Если есть сезон, категория и артикул - возвращаемся к сезону+категории
+    if (season && categoryId && article) {
+      return `/gender/${gender}/season/${encodeURIComponent(season)}/category/${categoryId}`;
+    }
+    // Если есть сезон и артикул - возвращаемся к сезону
+    if (season && article) {
+      return `/gender/${gender}/season/${encodeURIComponent(season)}`;
+    }
+    // Если есть категория и артикул - возвращаемся к категории (с добавлением season/all)
+    if (categoryId && article) {
+      return `/gender/${gender}/season/all/category/${categoryId}`;
+    }
+    // Если есть только артикул - возвращаемся к общей странице коллекции (с добавлением season/all)
+    return `/gender/${gender}/season/all`;
+  };
+
+  // Получение заголовка для отображения контекста
+  const getContextTitle = () => {
+    // Если есть сезон, категория и артикул
+    if (season && categoryId && article) {
+      // Используем название категории из product данных, если доступно, иначе ID
+      const categoryName = product?.category_name || categoryId;
+      return `Сезон: ${decodeURIComponent(season)}, Категория: ${categoryName}`;
+    }
+    // Если есть сезон и артикул
+    if (season && article) {
+      return `Сезон: ${decodeURIComponent(season)}`;
+    }
+    // Если есть категория и артикул
+    if (categoryId && article) {
+      // Используем название категории из product данных, если доступно, иначе ID
+      const categoryName = product?.category_name || categoryId;
+      return `Категория: ${categoryName}`;
+    }
+    // Если есть только артикул
+    return 'Все товары';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-4 flex items-center gap-3">
-          <Button onClick={() => navigate(-1)} variant="ghost">← Назад</Button>
+          <Button onClick={() => navigate(getBackPath())} variant="ghost">← Назад</Button>
           <Link to="/"><Button variant="outline">Домой</Button></Link>
+        </div>
+        <div className="mb-4 text-sm text-gray-600">
+          Контекст: {getContextTitle()}
         </div>
         <div className="grid gap-8 lg:grid-cols-12 items-start">
           {/* Левый блок: место для большого изображения */}

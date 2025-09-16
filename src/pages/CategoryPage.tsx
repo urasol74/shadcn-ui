@@ -164,7 +164,7 @@ export default function CategoryPage() {
                           alt={product.name} 
                         />
                       </div>
-                      <Link to={`/category/${gender}/${categoryId}/${product.article}`}>
+                      <Link to={`/category/${gender}/${categoryId}/${encodeURIComponent(product.article)}`}>
                         <Button variant="outline" className="mb-3 w-full text-sm">
                           {product.name}
                         </Button>

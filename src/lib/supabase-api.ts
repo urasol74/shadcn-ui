@@ -13,6 +13,7 @@ export const supabaseApi = {
       return cached
     }
 
+    console.log('Выполняем поиск товаров по артикулу:', article);
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -56,6 +57,7 @@ export const supabaseApi = {
       return cached
     }
 
+    console.log('Получаем случайные товары, количество:', count);
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -108,6 +110,7 @@ export const supabaseApi = {
       return cached
     }
 
+    console.log('Получаем категории для гендера:', gender);
     const { data, error } = await supabase
       .from('categories')
       .select(`
@@ -145,6 +148,7 @@ export const supabaseApi = {
       return cached
     }
 
+    console.log('Получаем товары для гендера и категории:', gender, categoryId);
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -203,9 +207,11 @@ export const supabaseApi = {
     const cacheKey = cacheService.generateKey('getProduct', { article })
     const cached = cacheService.get(cacheKey)
     if (cached) {
+      console.log('Returning cached product data for article:', article)
       return cached
     }
 
+    console.log('Fetching product data from Supabase for article:', article)
     const { data: product, error } = await supabase
       .from('products')
       .select(`
@@ -220,12 +226,14 @@ export const supabaseApi = {
         variants(*)
       `)
       .eq('article', article)
-      .single()
+      .maybeSingle()
 
     if (error || !product) {
       console.error('Product error:', error)
       return { product: null, variants: [] }
     }
+
+    console.log('Raw product data from Supabase:', product)
 
     const result = {
       product: {
@@ -244,6 +252,8 @@ export const supabaseApi = {
       variants: product.variants || []
     }
 
+    console.log('Processed product data:', result)
+
     // Сохраняем в кэш
     cacheService.set(cacheKey, result)
     return result
@@ -258,6 +268,7 @@ export const supabaseApi = {
       return cached
     }
 
+    console.log('Получаем сезоны, гендер:', gender);
     let query = supabase
       .from('products')
       .select('season')
@@ -265,7 +276,7 @@ export const supabaseApi = {
       .not('season', 'eq', '')
 
     if (gender) {
-      query = query.eq('gender', gender)
+      query = query.eq('gender', gender) // Используем точное совпадение вместо ilike
     }
 
     const { data, error } = await query
@@ -293,12 +304,14 @@ export const supabaseApi = {
       return cached
     }
 
+    console.log('Получаем рекомендуемые товары');
     const genders = ['чол', 'жiн', 'хлопч', 'дiвч'];
     const result = [];
     
     try {
       // Получаем по 1 товару от каждого гендера
       for (const gender of genders) {
+        console.log('Получаем товар для гендера:', gender);
         const { data, error } = await supabase
           .from('products')
           .select(`
@@ -346,6 +359,7 @@ export const supabaseApi = {
         // Исключаем уже выбранные артикулы
         const usedArticles = result.map(p => p.article)
         
+        console.log('Получаем дополнительный товар для гендера:', randomGender);
         const { data, error } = await supabase
           .from('products')
           .select(`
@@ -382,6 +396,8 @@ export const supabaseApi = {
       
       // Перемешиваем результат для случайного порядка
       const shuffledResult = result.sort(() => 0.5 - Math.random())
+      
+      console.log('Рекомендуемые товары получены:', shuffledResult);
       
       // Сохраняем в кэш
       cacheService.set(cacheKey, shuffledResult)
