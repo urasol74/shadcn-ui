@@ -71,7 +71,8 @@ const SearchPage = () => {
     };
 
     const handleResultClick = (item: any) => {
-        navigate(`/category/${item.gender}/${item.category_id}/${item.article}`);
+        // Using the new URL format with gender and article
+        navigate(`/gender/${item.gender}/${encodeURIComponent(item.article)}`);
     };
 
     const formatPrice = (v: any) => {
