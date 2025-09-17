@@ -8,14 +8,18 @@ import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
 import ProductImage from '@/components/ProductImage';
 import { supabaseApi } from '@/lib/supabase-api';
+import { useAuth } from '@/hooks/useAuth';
 
 const ProductPage = () => {
   const navigate = useNavigate();
   const { gender, season, categoryId, article } = useParams();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showUserDiscount, setShowUserDiscount] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     console.log('ProductPage params:', { gender, season, categoryId, article }); // Для отладки
@@ -36,6 +40,17 @@ const ProductPage = () => {
         if (data && data.product) {
           setProduct(data.product);
           setVariants(Array.isArray(data.variants) ? data.variants : []);
+          
+          // Проверяем, находится ли товар в избранном
+          const savedFavorites = localStorage.getItem('favorites');
+          if (savedFavorites) {
+            try {
+              const favorites = JSON.parse(savedFavorites);
+              setIsFavorite(favorites.some(item => item.article === data.product.article));
+            } catch (e) {
+              console.error('Error parsing favorites', e);
+            }
+          }
         } else {
           setProduct(null);
           setVariants([]);
@@ -67,6 +82,19 @@ const ProductPage = () => {
   if (!product) {
     return <div className="text-center text-gray-500">Товар не найден.</div>;
   }
+
+  // Если в product нет цен — берём из первого варианта (variant) где есть цена
+  const variantWithPrice = variants.find(v => v.sale_price != null || v.purchase_price != null || v.discount != null) || variants[0] || null;
+  const displayPurchase = product.purchase_price ?? variantWithPrice?.purchase_price ?? '-';
+  const displaySale = product.sale_price ?? variantWithPrice?.sale_price ?? '-';
+  const displayDiscount = (product.discount ?? variantWithPrice?.discount);
+
+  // Отладочный вывод для проверки значений
+  console.log('Product data:', product);
+  console.log('Display sale:', displaySale);
+  console.log('Display discount:', displayDiscount);
+  console.log('User data:', user);
+  console.log('Show user discount:', showUserDiscount);
 
   // Функции форматирования (такие же как в GenderSeasonPage)
   const formatPrice = (v: any) => {
@@ -106,17 +134,37 @@ const ProductPage = () => {
     return `${n}%`;
   };
 
+  // Функция для расчета цены со скидкой
+  const calculateDiscountedPrice = (price: any, discount: number) => {
+    if (price === null || price === undefined || price === '') return '-';
+    
+    // Обрабатываем формат цены из БД (с запятыми как разделителями тысяч)
+    let priceStr = String(price).replace(/\s+/g, '');
+    if (priceStr.includes(',')) {
+      priceStr = priceStr.replace(/,/g, '');
+    }
+    
+    const priceNum = Number(priceStr);
+    if (Number.isNaN(priceNum)) return String(price);
+    
+    // Рассчитываем цену со скидкой и округляем до целых чисел
+    const discountedPrice = Math.round(priceNum - (priceNum * discount / 100));
+    
+    // Форматируем цену с разделителем тысяч и добавляем ,0 грн
+    let formatted = discountedPrice.toString();
+    if (discountedPrice >= 1000) {
+      formatted = discountedPrice.toLocaleString('ru-RU');
+    }
+    formatted += ',0';
+    
+    return formatted + ' грн';
+  };
+
   const totalStock = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
   const available = totalStock > 0;
 
   // colorMap уже содержит sizes, но сделаем безопасную копию и отсортируем размеры
   const colorKeys = Object.keys(colorMap);
-
-  // Если в product нет цен — берём из первого варианта (variant) где есть цена
-  const variantWithPrice = variants.find(v => v.sale_price != null || v.purchase_price != null || v.discount != null) || variants[0] || null;
-  const displayPurchase = product.purchase_price ?? variantWithPrice?.purchase_price ?? '-';
-  const displaySale = product.sale_price ?? variantWithPrice?.sale_price ?? '-';
-  const displayDiscount = (product.discount ?? variantWithPrice?.discount);
 
   // Функция для определения пути назад в зависимости от контекста
   const getBackPath = () => {
@@ -156,6 +204,53 @@ const ProductPage = () => {
     }
     // Если есть только артикул
     return 'Все товары';
+  };
+
+  // Функция для добавления/удаления из избранного
+  const toggleFavorite = () => {
+    if (!product) return;
+    
+    // Создаем упрощенный объект товара для избранного
+    const favoriteProduct = {
+      article: product.article,
+      name: product.name,
+      image: product.image,
+      purchase_price: product.purchase_price,
+      sale_price: product.sale_price,
+      discount: product.discount,
+      // Добавляем данные для правильного роутинга
+      gender: gender,
+      season: season,
+      category_id: categoryId,
+      category_name: product.category_name,
+      // Если цены нет в основном объекте, пробуем получить из вариантов
+      ...(variants.find(v => v.sale_price != null || v.purchase_price != null || v.discount != null) || {})
+    };
+    
+    console.log('Добавляем в избранное:', favoriteProduct);
+    
+    const savedFavorites = localStorage.getItem('favorites');
+    let favorites = [];
+    
+    if (savedFavorites) {
+      try {
+        favorites = JSON.parse(savedFavorites);
+      } catch (e) {
+        console.error('Error parsing favorites', e);
+      }
+    }
+    
+    if (isFavorite) {
+      // Удаляем из избранного
+      const updatedFavorites = favorites.filter(item => item.article !== product.article);
+      localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+      setIsFavorite(false);
+    } else {
+      // Добавляем в избранное
+      const updatedFavorites = [...favorites, favoriteProduct];
+      localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+      setIsFavorite(true);
+    }
   };
 
   return (
@@ -198,7 +293,12 @@ const ProductPage = () => {
                   </div>
                   {/* Иконки (плейсхолдеры) */}
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-400 text-lg">♡</span>
+                    <button 
+                      onClick={toggleFavorite}
+                      className="text-2xl cursor-pointer"
+                    >
+                      {isFavorite ? '❤️' : '♡'}
+                    </button>
                     <span className="text-gray-400 text-lg">🛒</span>
                   </div>
                 </div>
@@ -206,16 +306,33 @@ const ProductPage = () => {
                 {/* Цена и скидка */}
                 <div className="mt-6">
                   <div className="space-y-2">
-                    {/* Старая цена (purchase_price) - только если есть скидка */}
-                    {(displayPurchase !== '-') && Number(displayDiscount) > 0 && (
+                    {/* Старая цена (purchase_price) - только если есть скидка или если discount = 0 и пользователь авторизован */}
+                    {(displayPurchase !== '-' && Number(displayDiscount) > 0) || 
+                     (user && displayDiscount !== null && Number(displayDiscount) === 0) ? (
                       <div className="text-gray-500 line-through text-lg font-semibold">
                         Старая цена: {formatPrice(displayPurchase)}
                       </div>
-                    )}
+                    ) : null}
                     
-                    {/* Основная цена */}
+                    {/* Основная цена или кнопка "Скидка" */}
                     <div className="font-semibold text-2xl text-blue-600">
-                      Цена: {formatPrice(displaySale)}
+                      Ваша цена: {
+                        user && displayDiscount !== null && Number(displayDiscount) === 0 ? (
+                          showUserDiscount ? (
+                            <span>{calculateDiscountedPrice(displayPurchase, user.sale)}</span>
+                          ) : (
+                            <Button 
+                              onClick={() => setShowUserDiscount(true)}
+                              className="bg-red-600 hover:bg-red-700 text-white ml-2"
+                              size="sm"
+                            >
+                              Скидка
+                            </Button>
+                          )
+                        ) : (
+                          formatPrice(displaySale)
+                        )
+                      }
                     </div>
                     
                     {/* Отображение скидки или "Новая коллекция" */}

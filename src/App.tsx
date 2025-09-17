@@ -8,6 +8,9 @@ import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
 import SearchPage from './pages/Search';
 import GenderSeasonPage from './pages/GenderSeasonPage';
+import RegistrationPage from './pages/RegistrationPage';
+import LoginPage from './pages/LoginPage';
+import FavoritesPage from './pages/FavoritesPage';
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
@@ -20,6 +23,8 @@ const App = () => (
       <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/registration" element={<RegistrationPage />} />
+            <Route path="/login" element={<LoginPage />} />
             
             {/* Маршруты для обработки страниц коллекций и товаров */}
             {/* Более специфичные маршруты должны идти первыми */}
@@ -37,6 +42,7 @@ const App = () => (
             
             <Route path="/category/:gender/:categoryId" element={<CategoryPage />} />
             <Route path="/category/:gender/:categoryId/:article" element={<ProductPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

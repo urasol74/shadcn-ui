@@ -614,9 +614,6 @@ export default function GenderSeasonPage() {
                                     <h3 className="font-medium text-sm mb-1 line-clamp-2">
                                         {product.name}
                                     </h3>
-                                    <div className="text-xs text-gray-500 mb-2">
-                                        {product.article}
-                                    </div>
                                     <div className="space-y-1">
                                         {product.discount && Number(product.discount) > 0 ? (
                                             <div className="text-gray-500 line-through text-sm">
