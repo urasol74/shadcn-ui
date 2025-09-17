@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Используем новые значения напрямую
-const supabaseUrl = 'http://178.212.198.23:8000'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJzZXJ2aWNlX3JvbGUiLCJleHAiOjE3ODkyMTQzMjUsImlhdCI6MTc1NzY3ODMyNX0.qk3_lQzPJa0IaOYPnH932y-jl6LV5_e5BKqqxsBPsa8'
+//const supabaseUrl = 'http://178.212.198.23:8000'
+//const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJzZXJ2aWNlX3JvbGUiLCJleHAiOjE3ODkyMTQzMjUsImlhdCI6MTc1NzY3ODMyNX0.qk3_lQzPJa0IaOYPnH932y-jl6LV5_e5BKqqxsBPsa8'
 
-//const supabaseUrl = 'https://fquvncbvvkfukbwsjhns.supabase.co'
-//const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxdXZuY2J2dmtmdWtid3NqaG5zIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5OTU4MCwiZXhwIjoyMDcyNTc1NTgwfQ.aKXUr9UBujNl6KPg3KmycnXh2tpgXNIRcoTID70tTPE'
+const supabaseUrl = 'https://fquvncbvvkfukbwsjhns.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxdXZuY2J2dmtmdWtid3NqaG5zIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Njk5OTU4MCwiZXhwIjoyMDcyNTc1NTgwfQ.aKXUr9UBujNl6KPg3KmycnXh2tpgXNIRcoTID70tTPE'
 
 console.log('Инициализация клиента Supabase с URL:', supabaseUrl);
 
