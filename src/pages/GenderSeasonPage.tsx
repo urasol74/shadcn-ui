@@ -602,12 +602,12 @@ export default function GenderSeasonPage() {
                                 <CardContent className="p-4">
                                     <div className="h-48 bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                                         <img 
-                                            src={product.image ? `/static/pic/${product.image}` : "/static/pic/placeholder.webp"}
+                                            src={product.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${product.image}` : "https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp"}
                                             alt={product.name}
                                             className="w-full h-full object-contain"
                                             onError={({ currentTarget }) => {
                                                 currentTarget.onerror = null;
-                                                currentTarget.src = '/static/pic/placeholder.webp';
+                                                currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
                                             }}
                                         />
                                     </div>

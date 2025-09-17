@@ -3,11 +3,32 @@ export function getProductImageCandidates(product: any) {
   try {
     const art = String(product.article || product.id || '');
     const base = art.replace(/\.[^.\s]+$/, '');
-    if (Array.isArray(product.images) && product.images.length) product.images.forEach((im: string) => candidates.push(im.startsWith('/') ? im : `/static/pic/${im}`));
-    if (product.photo) candidates.push(product.photo.startsWith('/') ? product.photo : `/static/pic/${product.photo}`);
-    ['jpg', 'jpeg', 'png', 'webp'].forEach(ext => candidates.push(`/static/pic/${base}.${ext}`));
+    const supabaseStorageUrl = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image';
+    
+    if (Array.isArray(product.images) && product.images.length) {
+      product.images.forEach((im: string) => {
+        if (im.startsWith('http')) {
+          candidates.push(im);
+        } else {
+          candidates.push(`${supabaseStorageUrl}/img-site/${im}`);
+        }
+      });
+    }
+    
+    if (product.photo) {
+      if (product.photo.startsWith('http')) {
+        candidates.push(product.photo);
+      } else {
+        candidates.push(`${supabaseStorageUrl}/img-site/${product.photo}`);
+      }
+    }
+    
+    ['webp', 'jpg', 'jpeg', 'png'].forEach(ext => {
+      candidates.push(`${supabaseStorageUrl}/img-site/${base}.${ext}`);
+    });
   } catch (e) {}
-  candidates.push('/static/pic/placeholder.jpg');
+  
+  candidates.push('https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.jpg');
   return candidates;
 }
 

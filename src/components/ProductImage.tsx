@@ -31,55 +31,58 @@ export const ProductImage: React.FC<ProductImageProps> = ({
     const candidates: string[] = []
     
     try {
+      // Базовый URL для Supabase Storage
+      const supabaseStorageUrl = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image'
+      
       // Только если есть поле image из базы данных, используем его
       if (product.image) {
-        // Проверяем, является ли путь абсолютным или относительным
-        if (product.image.startsWith('http') || product.image.startsWith('/')) {
+        // Проверяем, является ли путь абсолютным
+        if (product.image.startsWith('http')) {
           candidates.push(product.image)
         } else {
-          // Если это относительный путь, добавляем префикс /static/pic/
-          candidates.push(`/static/pic/${product.image}`)
+          // Если это относительный путь, формируем полный URL для Supabase Storage
+          candidates.push(`${supabaseStorageUrl}/${product.image}`)
         }
         
-        // Генерируем также пути для дополнительных изображений с тем же префиксом
+        // Генерируем также пути для дополнительных изображений
         const baseName = product.image.replace(/\.[^.\s]+$/, '') // Убираем расширение
-        const extension = product.image.split('.').pop() // Получаем расширение
+        const extension = product.image.split('.').pop() || 'webp' // По умолчанию webp
         
         if (baseName) {
           // Добавляем дополнительные изображения в формате: префикс-1, префикс-2 и т.д.
           // Используем то же расширение, что и у основного изображения
           for (let i = 1; i <= maxImages; i++) {
-            candidates.push(`/static/pic/${baseName}-${i}.${extension}`)
+            candidates.push(`${supabaseStorageUrl}/img-site/${baseName}-${i}.${extension}`)
             
             // Также проверяем формат с -F префиксом
-            candidates.push(`/static/pic/${baseName}-F${i}.${extension}`)
+            candidates.push(`${supabaseStorageUrl}/img-site/${baseName}-F${i}.${extension}`)
           }
         }
       } else if (product.article) {
         // Если нет поля image, используем article для генерации пути
         const cleanArticle = product.article.replace(/\.K$/, '')
-        // Пробуем сначала .webp (как в базе данных), затем другие расширения
-        candidates.push(`/static/pic/${cleanArticle}.webp`)
-        candidates.push(`/static/pic/${cleanArticle}.jpg`)
-        candidates.push(`/static/pic/${cleanArticle}.jpeg`)
-        candidates.push(`/static/pic/${cleanArticle}.png`)
+        // Пробуем сначала .webp, затем другие расширения
+        candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}.webp`)
+        candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}.jpg`)
+        candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}.jpeg`)
+        candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}.png`)
         
         // Добавляем дополнительные изображения
         for (let i = 1; i <= maxImages; i++) {
-          candidates.push(`/static/pic/${cleanArticle}-${i}.webp`)
-          candidates.push(`/static/pic/${cleanArticle}-${i}.jpg`)
-          candidates.push(`/static/pic/${cleanArticle}-${i}.jpeg`)
-          candidates.push(`/static/pic/${cleanArticle}-${i}.png`)
-          candidates.push(`/static/pic/${cleanArticle}-F${i}.webp`)
-          candidates.push(`/static/pic/${cleanArticle}-F${i}.jpg`)
-          candidates.push(`/static/pic/${cleanArticle}-F${i}.jpeg`)
-          candidates.push(`/static/pic/${cleanArticle}-F${i}.png`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-${i}.webp`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-${i}.jpg`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-${i}.jpeg`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-${i}.png`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-F${i}.webp`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-F${i}.jpg`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-F${i}.jpeg`)
+          candidates.push(`${supabaseStorageUrl}/img-site/${cleanArticle}-F${i}.png`)
         }
       }
       
       // Плейсхолдер в конце (только для основного изображения, не для галереи)
       if (variant !== 'gallery' && candidates.length === 0) {
-        candidates.push('/static/pic/placeholder.jpg')
+        candidates.push(`${supabaseStorageUrl}/img-site/placeholder.jpg`)
       }
       
       // Удаляем дубликаты
