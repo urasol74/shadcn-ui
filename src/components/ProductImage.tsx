@@ -316,21 +316,22 @@ export const ProductImage: React.FC<ProductImageProps> = ({
       {/* Lightbox для полноразмерного просмотра */}
       {lightboxOpen && (
         <div 
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 overflow-auto" 
           onClick={() => setLightboxOpen(false)}
         >
-          <div className="relative max-h-[90vh] max-w-[90vw]">
+          <div className="relative w-full h-full flex items-center justify-center">
             <img 
               src={validImages[currentIdx]} 
               alt={alt || 'Product image'} 
-              className="max-h-full max-w-full object-contain" 
+              className="max-h-[calc(100vh-2rem)] max-w-full object-contain cursor-zoom-out" 
+              onClick={(e) => e.stopPropagation()}
             />
             
             {/* Навигация в lightbox */}
             {validImages.length > 1 && (
               <>
                 <button 
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full z-10"
                   onClick={(e) => {
                     e.stopPropagation()
                     switchImage(currentIdx > 0 ? currentIdx - 1 : validImages.length - 1)
@@ -339,7 +340,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                   ←
                 </button>
                 <button 
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full z-10"
                   onClick={(e) => {
                     e.stopPropagation()
                     switchImage(currentIdx < validImages.length - 1 ? currentIdx + 1 : 0)
@@ -349,7 +350,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
                 </button>
                 
                 {/* Индикатор текущего изображения */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/20 text-white px-3 py-1 rounded-full text-sm">
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/20 text-white px-3 py-1 rounded-full text-sm z-10">
                   {currentIdx + 1} / {validImages.length}
                 </div>
               </>
@@ -357,7 +358,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
             
             {/* Кнопка закрытия */}
             <button 
-              className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full"
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full z-10"
               onClick={() => setLightboxOpen(false)}
             >
               ✕
