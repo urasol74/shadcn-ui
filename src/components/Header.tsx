@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import LiveSearch from './LiveSearch';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,8 +9,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supabaseApi } from '@/lib/supabase-api';
+import { useAuth } from '@/hooks/useAuth';
 
 const Header = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [menCategories, setMenCategories] = useState([]);
   const [womenCategories, setWomenCategories] = useState([]);
   const [boyCategories, setBoyCategories] = useState([]);
@@ -44,6 +47,11 @@ const Header = () => {
   const handleMouseEnter = (menu) => setOpenMenu(menu);
   const handleMouseLeave = () => setOpenMenu(null);
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
     <header className="border-b bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4">
@@ -74,11 +82,34 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Блок Админ */}
+          {/* Блок пользователя */}
           <div className="flex items-center ml-2">
-            <Link to="/admin" className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
-              Админ
+            <Link to="/favorites" className="mr-2 text-gray-600 hover:text-red-500">
+              <span className="text-xl">♡</span>
             </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
+                    {user.tel}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Выйти
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link to="/login" className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
+                  Вход
+                </Link>
+                <Link to="/registration" className="ml-2 bg-blue-100 text-blue-700 px-3 py-2 rounded font-semibold hover:bg-blue-200 transition-all text-sm">
+                  Регистрация
+                </Link>
+              </>
+            )}
           </div>
 
         </div>
