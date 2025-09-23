@@ -158,10 +158,12 @@ const FavoritesPage = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         removeFromFavorites(product.article);
+                        // Отправляем событие для обновления счетчика в Header
+                        window.dispatchEvent(new Event('favoritesChange'));
                       }}
                       className="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1"
                     >
-                      <span className="text-lg">❤️</span>
+                      <span className="text-lg font-bold">×</span>
                     </button>
                   </CardContent>
                 </Card>

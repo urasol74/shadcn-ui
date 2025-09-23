@@ -41,21 +41,28 @@ export const ProductImage: React.FC<ProductImageProps> = ({
           candidates.push(product.image)
         } else {
           // Если это относительный путь, формируем полный URL для Supabase Storage
-          candidates.push(`${supabaseStorageUrl}/${product.image}`)
+          // Проверяем, начинается ли путь уже с img-site/
+          if (product.image.startsWith('img-site/')) {
+            candidates.push(`${supabaseStorageUrl}/${product.image}`)
+          } else {
+            candidates.push(`${supabaseStorageUrl}/img-site/${product.image}`)
+          }
         }
         
         // Генерируем также пути для дополнительных изображений
         const baseName = product.image.replace(/\.[^.\s]+$/, '') // Убираем расширение
+        // Убираем префикс img-site/ если он есть
+        const cleanBaseName = baseName.startsWith('img-site/') ? baseName.substring(9) : baseName
         const extension = product.image.split('.').pop() || 'webp' // По умолчанию webp
         
-        if (baseName) {
+        if (cleanBaseName) {
           // Добавляем дополнительные изображения в формате: префикс-1, префикс-2 и т.д.
           // Используем то же расширение, что и у основного изображения
           for (let i = 1; i <= maxImages; i++) {
-            candidates.push(`${supabaseStorageUrl}/img-site/${baseName}-${i}.${extension}`)
+            candidates.push(`${supabaseStorageUrl}/img-site/${cleanBaseName}-${i}.${extension}`)
             
             // Также проверяем формат с -F префиксом
-            candidates.push(`${supabaseStorageUrl}/img-site/${baseName}-F${i}.${extension}`)
+            candidates.push(`${supabaseStorageUrl}/img-site/${cleanBaseName}-F${i}.${extension}`)
           }
         }
       } else if (product.article) {

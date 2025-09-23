@@ -18,6 +18,7 @@ const Header = () => {
   const [womenCategories, setWomenCategories] = useState([]);
   const [boyCategories, setBoyCategories] = useState([]);
   const [girlCategories, setGirlCategories] = useState([]);
+  const [favoritesCount, setFavoritesCount] = useState(0);
 
   useEffect(() => {
     // Загружаем категории с использованием Supabase API
@@ -40,6 +41,49 @@ const Header = () => {
     };
 
     loadCategories();
+  }, []);
+
+  // Загружаем количество избранных товаров из localStorage
+  useEffect(() => {
+    const updateFavoritesCount = () => {
+      try {
+        const savedFavorites = localStorage.getItem('favorites');
+        if (savedFavorites) {
+          const favorites = JSON.parse(savedFavorites);
+          setFavoritesCount(Array.isArray(favorites) ? favorites.length : 0);
+        } else {
+          setFavoritesCount(0);
+        }
+      } catch (e) {
+        console.error('Error parsing favorites', e);
+        setFavoritesCount(0);
+      }
+    };
+
+    // Инициализируем счетчик
+    updateFavoritesCount();
+
+    // Добавляем обработчик события для отслеживания изменений в localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'favorites') {
+        updateFavoritesCount();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Также создаем пользовательское событие для обновления из других компонентов
+    const handleFavoritesChange = () => {
+      updateFavoritesCount();
+    };
+
+    window.addEventListener('favoritesChange', handleFavoritesChange);
+
+    // Очищаем обработчики при размонтировании
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('favoritesChange', handleFavoritesChange);
+    };
   }, []);
 
   // Хук для управления hover
@@ -85,7 +129,14 @@ const Header = () => {
           {/* Блок пользователя */}
           <div className="flex items-center ml-2">
             <Link to="/favorites" className="mr-2 text-gray-600 hover:text-red-500">
-              <span className="text-xl">♡</span>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <span>Избранное</span>
+                {favoritesCount > 0 && (
+                  <span className="bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                    {favoritesCount}
+                  </span>
+                )}
+              </Button>
             </Link>
             {user ? (
               <DropdownMenu>
