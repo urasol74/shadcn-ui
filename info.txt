@@ -1,0 +1,3 @@
+
+Деплой на netlify
+netlify deploy --dir=dist --prod
