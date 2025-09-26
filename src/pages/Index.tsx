@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
 import React from 'react';
+import { RecommendedProducts } from '@/components/RecommendedProducts';
 
 export default function HomePage() {
   return (
@@ -63,6 +64,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <RecommendedProducts />
 
       {/* Categories Grid */}
       <section className="pt-4 pb-12 bg-gray-50">
