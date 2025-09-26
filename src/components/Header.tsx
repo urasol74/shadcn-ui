@@ -139,18 +139,16 @@ const Header = () => {
               </Button>
             </Link>
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
-                    {user.tel}
+               <>
+                <Link to="/cart">
+                  <Button className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
+                    Корзина
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    Выйти
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Link>
+                <Button onClick={handleLogout} className="ml-2 bg-blue-100 text-blue-700 px-3 py-2 rounded font-semibold hover:bg-blue-200 transition-all text-sm">
+                  Выйти
+                </Button>
+              </>
             ) : (
               <>
                 <Link to="/login" className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
