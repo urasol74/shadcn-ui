@@ -1,393 +1,207 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
+import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
-import ProductImage from '@/components/ProductImage';
-import { supabaseApi } from '@/lib/supabase-api';
-import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
+import { formatPrice, formatDiscount } from '@/lib/priceUtils';
+import { Heart, ShoppingCart } from 'lucide-react';
 
-const ProductPage = () => {
-  const navigate = useNavigate();
-  const { gender, season, categoryId, article } = useParams();
-  const { user } = useAuth();
-  const [product, setProduct] = useState(null);
-  const [variants, setVariants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [showUserDiscount, setShowUserDiscount] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+interface Variant {
+    id: number;
+    size: string;
+    purchase_price: number;
+    sale_price: number;
+    discount: number;
+    stock: number;
+    color: string;
+}
 
-  useEffect(() => {
-    console.log('ProductPage params:', { gender, season, categoryId, article }); // Для отладки
-    
-    // Определяем реальный article - это параметр article
-    const realArticle = article;
-    
-    if (!realArticle) return;
-    
-    const loadProduct = async () => {
-      setLoading(true);
-      try {
-        const data = await supabaseApi.getProduct(realArticle);
-        
-        console.log('Product data from Supabase:', data); // Для отладки
-        console.log('Product image field:', data?.product?.image); // Для отладки
-        
-        if (data && data.product) {
-          setProduct(data.product);
-          setVariants(Array.isArray(data.variants) ? data.variants : []);
-          
-          // Проверяем, находится ли товар в избранном
-          const savedFavorites = localStorage.getItem('favorites');
-          if (savedFavorites) {
-            try {
-              const favorites = JSON.parse(savedFavorites);
-              setIsFavorite(favorites.some(item => item.article === data.product.article));
-            } catch (e) {
-              console.error('Error parsing favorites', e);
+interface Product {
+    id: number;
+    article: string;
+    name: string;
+    gender: string;
+    season: string;
+    category_id: number;
+    image: string;
+    categories: { name: string };
+    variants: Variant[];
+}
+
+export default function ProductPage() {
+    const { gender, season, article } = useParams();
+    const [product, setProduct] = useState<Product | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
+    const [variantsByColor, setVariantsByColor] = useState<Record<string, Variant[]>>({});
+
+    const decodedSeason = season ? decodeURIComponent(season) : null;
+
+    useEffect(() => {
+        const fetchProduct = async () => {
+            if (!article || !gender || !decodedSeason) {
+                setLoading(false);
+                return;
             }
-          }
-        } else {
-          setProduct(null);
-          setVariants([]);
-        }
-      } catch (error) {
-        console.error('Product fetch error from Supabase:', error);
-        setProduct(null);
-        setVariants([]);
-      }
-      setLoading(false);
-    };
-    
-    loadProduct();
-  }, [article, gender, season, categoryId]);
 
-  // Группировка вариантов по color
-  const colorMap = {};
-  variants.forEach(v => {
-    // only include sizes with positive stock so users don't see unavailable sizes
-    const stockNum = Number(v.stock) || 0;
-    if (stockNum <= 0) return;
-    if (!colorMap[v.color]) colorMap[v.color] = [];
-    colorMap[v.color].push(v.size);
-  });
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .select(`
+                        id, article, name, gender, season, category_id, image,
+                        categories(name),
+                        variants!inner(id, size, color, purchase_price, sale_price, discount, stock)
+                    `)
+                    .eq('article', article)
+                    .eq('gender', gender)
+                    .eq('season', decodedSeason);
 
-  if (loading) {
-    return <div className="text-center">Загрузка...</div>;
-  }
-  if (!product) {
-    return <div className="text-center text-gray-500">Товар не найден.</div>;
-  }
+                if (error || !data || data.length === 0) {
+                    console.error('Product loading error:', error);
+                    setProduct(null);
+                } else {
+                    const fetchedProduct = data[0] as Product;
+                    setProduct(fetchedProduct);
 
-  // Если в product нет цен — берём из первого варианта (variant) где есть цена
-  const variantWithPrice = variants.find(v => v.sale_price != null || v.purchase_price != null || v.discount != null) || variants[0] || null;
-  const displayPurchase = product.purchase_price ?? variantWithPrice?.purchase_price ?? '-';
-  const displaySale = product.sale_price ?? variantWithPrice?.sale_price ?? '-';
-  const displayDiscount = (product.discount ?? variantWithPrice?.discount);
+                    const grouped: Record<string, Variant[]> = {};
+                    fetchedProduct.variants.forEach(variant => {
+                        const color = variant.color || 'default';
+                        if (!grouped[color]) {
+                            grouped[color] = [];
+                        }
+                        grouped[color].push(variant);
+                    });
 
-  // Отладочный вывод для проверки значений
-  console.log('Product data:', product);
-  console.log('Display sale:', displaySale);
-  console.log('Display discount:', displayDiscount);
-  console.log('User data:', user);
-  console.log('Show user discount:', showUserDiscount);
+                    // Sort sizes within each color group
+                    for (const color in grouped) {
+                        grouped[color].sort((a, b) => a.size.localeCompare(b.size, undefined, { numeric: true }));
+                    }
 
-  // Функции форматирования (такие же как в GenderSeasonPage)
-  const formatPrice = (v: any) => {
-    if (v === null || v === undefined || v === '') return '-';
-    
-    // Handle database format where comma is thousands separator (e.g., "2,109")
-    let priceStr = String(v).replace(/\s+/g, '');
-    
-    // If string contains comma, treat it as thousands separator
-    if (priceStr.includes(',')) {
-      // Remove comma and parse as integer (2,109 -> 2109)
-      priceStr = priceStr.replace(/,/g, '');
+                    setVariantsByColor(grouped);
+
+                    // Set a default selected variant
+                    const firstAvailable = fetchedProduct.variants.find(v => v.stock > 0);
+                    setSelectedVariant(firstAvailable || fetchedProduct.variants[0] || null);
+                }
+            } catch (err) {
+                console.error('Exception while fetching product', err);
+                setProduct(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProduct();
+    }, [article, gender, decodedSeason]);
+
+    if (loading) {
+        return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Загрузка товара...</div>;
     }
-    
-    const n = Number(priceStr);
-    if (Number.isNaN(n)) return String(v);
-    
-    // Manual formatting to ensure correct display
-    // Format with space as thousands separator and always show ,0
-    let formatted = n.toString();
-    
-    // Add space thousands separator for numbers >= 1000
-    if (n >= 1000) {
-      formatted = n.toLocaleString('ru-RU');
-    }
-    
-    // Always add ,0 at the end
-    formatted += ',0';
-    
-    return formatted + ' грн';
-  };
 
-  const formatDiscount = (d: any) => {
-    if (d === null || d === undefined || d === '') return '-';
-    const n = Number(String(d).replace(',', '.'));
-    if (Number.isNaN(n)) return String(d);
-    return `${n}%`;
-  };
-
-  // Функция для расчета цены со скидкой
-  const calculateDiscountedPrice = (price: any, discount: number) => {
-    if (price === null || price === undefined || price === '') return '-';
-    
-    // Обрабатываем формат цены из БД (с запятыми как разделителями тысяч)
-    let priceStr = String(price).replace(/\s+/g, '');
-    if (priceStr.includes(',')) {
-      priceStr = priceStr.replace(/,/g, '');
-    }
-    
-    const priceNum = Number(priceStr);
-    if (Number.isNaN(priceNum)) return String(price);
-    
-    // Рассчитываем цену со скидкой и округляем до целых чисел
-    const discountedPrice = Math.round(priceNum - (priceNum * discount / 100));
-    
-    // Форматируем цену с разделителем тысяч и добавляем ,0 грн
-    let formatted = discountedPrice.toString();
-    if (discountedPrice >= 1000) {
-      formatted = discountedPrice.toLocaleString('ru-RU');
-    }
-    formatted += ',0';
-    
-    return formatted + ' грн';
-  };
-
-  const totalStock = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
-  const available = totalStock > 0;
-
-  // colorMap уже содержит sizes, но сделаем безопасную копию и отсортируем размеры
-  const colorKeys = Object.keys(colorMap);
-
-  // Функция для определения пути назад в зависимости от контекста
-  const getBackPath = () => {
-    // Если есть сезон, категория и артикул - возвращаемся к сезону+категории
-    if (season && categoryId && article) {
-      return `/gender/${gender}/season/${encodeURIComponent(season)}/category/${categoryId}`;
-    }
-    // Если есть сезон и артикул - возвращаемся к сезону
-    if (season && article) {
-      return `/gender/${gender}/season/${encodeURIComponent(season)}`;
-    }
-    // Если есть категория и артикул - возвращаемся к категории (с добавлением season/all)
-    if (categoryId && article) {
-      return `/gender/${gender}/season/all/category/${categoryId}`;
-    }
-    // Если есть только артикул - возвращаемся к общей странице коллекции (с добавлением season/all)
-    return `/gender/${gender}/season/all`;
-  };
-
-  // Получение заголовка для отображения контекста
-  const getContextTitle = () => {
-    // Если есть сезон, категория и артикул
-    if (season && categoryId && article) {
-      // Используем название категории из product данных, если доступно, иначе ID
-      const categoryName = product?.category_name || categoryId;
-      return `Сезон: ${decodeURIComponent(season)}, Категория: ${categoryName}`;
-    }
-    // Если есть сезон и артикул
-    if (season && article) {
-      return `Сезон: ${decodeURIComponent(season)}`;
-    }
-    // Если есть категория и артикул
-    if (categoryId && article) {
-      // Используем название категории из product данных, если доступно, иначе ID
-      const categoryName = product?.category_name || categoryId;
-      return `Категория: ${categoryName}`;
-    }
-    // Если есть только артикул
-    return 'Все товары';
-  };
-
-  // Функция для добавления/удаления из избранного
-  const toggleFavorite = () => {
-    if (!product) return;
-    
-    // Создаем упрощенный объект товара для избранного
-    const favoriteProduct = {
-      article: product.article,
-      name: product.name,
-      image: product.image,
-      purchase_price: product.purchase_price,
-      sale_price: product.sale_price,
-      discount: product.discount,
-      // Добавляем данные для правильного роутинга
-      gender: gender,
-      season: season,
-      category_id: categoryId,
-      category_name: product.category_name,
-      // Если цены нет в основном объекте, пробуем получить из вариантов
-      ...(variants.find(v => v.sale_price != null || v.purchase_price != null || v.discount != null) || {})
-    };
-    
-    console.log('Добавляем в избранное:', favoriteProduct);
-    
-    const savedFavorites = localStorage.getItem('favorites');
-    let favorites = [];
-    
-    if (savedFavorites) {
-      try {
-        favorites = JSON.parse(savedFavorites);
-      } catch (e) {
-        console.error('Error parsing favorites', e);
-      }
-    }
-    
-    if (isFavorite) {
-      // Удаляем из избранного
-      const updatedFavorites = favorites.filter(item => item.article !== product.article);
-      localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
-      setIsFavorite(false);
-    } else {
-      // Добавляем в избранное
-      const updatedFavorites = [...favorites, favoriteProduct];
-      localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
-      setIsFavorite(true);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-4 flex items-center gap-3">
-          <Button onClick={() => navigate(getBackPath())} variant="ghost">← Назад</Button>
-          <Link to="/"><Button variant="outline">Домой</Button></Link>
-        </div>
-        <div className="mb-4 text-sm text-gray-600">
-          Контекст: {getContextTitle()}
-        </div>
-        <div className="grid gap-8 lg:grid-cols-12 items-start">
-          {/* Левый блок: место для большого изображения */}
-          <div className="lg:col-span-7">
-            <Card>
-              <CardContent className="p-4 bg-white">
-                <ProductImage 
-                  product={product}
-                  variant="gallery"
-                  showThumbnails={true}
-                  maxImages={8}
-                  className="w-full h-[320px] md:h-[560px] object-contain"
-                  alt={product?.name || 'product'}
-                  onImageLoad={() => setImageLoaded(true)}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Правый блок: мета-информация */}
-          <div className="lg:col-span-5">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="text-2xl font-semibold leading-tight">{product.name}</h1>
-                    <div className="text-sm text-gray-500 mt-1">Артикул: {product.article}</div>
-                  </div>
-                  {/* Иконки (плейсхолдеры) */}
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={toggleFavorite}
-                      className="text-2xl cursor-pointer"
-                    >
-                      {isFavorite ? '❤️' : '♡'}
-                    </button>
-                    <span className="text-gray-400 text-lg">🛒</span>
-                  </div>
+    if (!product) {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <Header />
+                <div className="container mx-auto px-4 py-8 text-center">
+                    <h2 className="text-2xl font-bold mb-4">Товар не найден</h2>
+                    <p className="text-gray-600 mb-6">Возможно, товар был удален или ссылка устарела.</p>
+                    <Link to="/">
+                        <Button>Вернуться на главную</Button>
+                    </Link>
                 </div>
+            </div>
+        );
+    }
 
-                {/* Цена и скидка */}
-                <div className="mt-6">
-                  <div className="space-y-2">
-                    {/* Старая цена (purchase_price) - только если есть скидка или если discount = 0 и пользователь авторизован */}
-                    {(displayPurchase !== '-' && Number(displayDiscount) > 0) || 
-                     (user && displayDiscount !== null && Number(displayDiscount) === 0) ? (
-                      <div className="text-gray-500 line-through text-lg font-semibold">
-                        Старая цена: {formatPrice(displayPurchase)}
-                      </div>
-                    ) : null}
-                    
-                    {/* Основная цена или кнопка "Скидка" */}
-                    <div className="font-semibold text-2xl text-blue-600">
-                      Ваша цена: {
-                        user && displayDiscount !== null && Number(displayDiscount) === 0 ? (
-                          showUserDiscount ? (
-                            <span>{calculateDiscountedPrice(displayPurchase, user.sale)}</span>
-                          ) : (
-                            <Button 
-                              onClick={() => setShowUserDiscount(true)}
-                              className="bg-red-600 hover:bg-red-700 text-white ml-2"
-                              size="sm"
-                            >
-                              Скидка
-                            </Button>
-                          )
-                        ) : (
-                          formatPrice(displaySale)
-                        )
-                      }
+    const isNew = selectedVariant && (!selectedVariant.discount || Number(selectedVariant.discount) === 0);
+    const inStock = selectedVariant && selectedVariant.stock > 0;
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <Header />
+            <div className="container mx-auto px-4 py-8">
+                <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+                    {/* Product Image */}
+                    <div>
+                        <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden sticky top-24">
+                            <img 
+                                src={product.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${product.image}` : "https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp"}
+                                alt={product.name}
+                                className="max-w-full max-h-full object-contain"
+                                onError={({ currentTarget }) => {
+                                    currentTarget.onerror = null;
+                                    currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
+                                }}
+                            />
+                        </div>
                     </div>
-                    
-                    {/* Отображение скидки или "Новая коллекция" */}
-                    {displayDiscount !== null && displayDiscount !== undefined && displayDiscount !== '' ? (
-                      Number(displayDiscount) > 0 ? (
-                        <div className="text-red-600 font-medium">
-                          Скидка: {formatDiscount(displayDiscount)}
-                        </div>
-                      ) : (
-                        <div className="text-green-600 font-medium">
-                          Новая коллекция
-                        </div>
-                      )
-                    ) : (
-                      <div className="text-green-600 font-medium">
-                        Новая коллекция
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Статус наличия */}
-                  <div className="mt-4 text-sm text-green-600">{available ? 'В наличии' : 'Нет в наличии'}</div>
-                </div>
-
-                {/* Цвета и размеры */}
-                <div className="mt-6">
-                  <div className="font-medium mb-2">Цвета и размеры</div>
-                  {colorKeys.length === 0 ? (
-                    <div className="text-sm text-gray-500">Варианты отсутствуют</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {colorKeys.map(color => (
-                        <div key={color} className="flex items-start gap-4">
-                          <div className="min-w-[72px] font-medium">{color}</div>
-                          <div className="flex-1 text-sm text-gray-700">
-                            {Array.from(new Set(colorMap[color])).join(', ')}
-                          </div>
+                    {/* Product Details */}
+                    <div>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h1 className="text-2xl lg:text-3xl font-bold">{product.name}</h1>
+                                <p className="text-gray-500 text-sm">Артикул: {product.article}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                               <Button variant="ghost" size="icon"><Heart className="h-6 w-6"/></Button> 
+                               <Button variant="ghost" size="icon"><ShoppingCart className="h-6 w-6"/></Button> 
+                            </div>
                         </div>
-                      ))}
+                        
+                        {selectedVariant && (
+                            <div className="my-5">
+                                <p className="text-3xl font-bold text-blue-600">Ваша цена: {formatPrice(selectedVariant.sale_price)}</p>
+                                {isNew ? (
+                                    <p className="text-green-600 font-semibold mt-1">Новая коллекция</p>
+                                ) : (
+                                    <p className="text-red-600 font-semibold mt-1">Скидка: {formatDiscount(selectedVariant.discount)}</p>
+                                )}
+                                {inStock ? (
+                                    <p className="text-sm text-gray-600 mt-1">В наличии</p>
+                                ) : (
+                                    <p className="text-sm text-red-600 mt-1">Нет в наличии</p>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="my-6">
+                            <h3 className="font-semibold text-lg mb-3">Цвета и размеры</h3>
+                            <div className="space-y-4">
+                                {Object.entries(variantsByColor).map(([color, variants]) => (
+                                    <div key={color}>
+                                        <p className="font-medium text-gray-800 mb-2">Цвет: <span className="font-bold">{color}</span></p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {variants.map((variant) => (
+                                                <Button
+                                                    key={variant.id}
+                                                    variant={selectedVariant?.id === variant.id ? 'default' : 'outline'}
+                                                    disabled={variant.stock <= 0}
+                                                    onClick={() => setSelectedVariant(variant)}
+                                                    className={variant.stock <= 0 ? 'text-gray-400' : ''}
+                                                >
+                                                    {variant.size}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 mt-8">
+                            <Button size="lg" className="flex-1 bg-gray-800 hover:bg-gray-900">Купить</Button>
+                            <Button size="lg" variant="outline" className="flex-1">Заказать быстро</Button>
+                        </div>
+                        
+                        <div className="mt-8 text-sm text-gray-600 space-y-1">
+                           <p><span className="font-semibold">Категория:</span> <Link to={`/gender/${gender}/season/all/category/${product.category_id}`} className="hover:underline">{product.categories.name}</Link></p>
+                           <p><span className="font-semibold">Сезон:</span> <Link to={`/gender/${gender}/season/${encodeURIComponent(product.season)}`} className="hover:underline">{product.season}</Link></p>
+                        </div>
                     </div>
-                  )}
                 </div>
-
-                {/* Кнопки (заглушены) */}
-                <div className="mt-6 flex gap-3">
-                  <Button disabled className="flex-1">Купить</Button>
-                  <Button disabled variant="outline" className="flex-1">Заказать быстро</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
-};
-
-export default ProductPage;
+    );
+}
