@@ -11,6 +11,7 @@ import GenderSeasonPage from './pages/GenderSeasonPage';
 import RegistrationPage from './pages/RegistrationPage';
 import LoginPage from './pages/LoginPage';
 import FavoritesPage from './pages/FavoritesPage';
+import CartPage from './pages/CartPage'; // Импортируем страницу корзины
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/registration" element={<RegistrationPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/cart" element={<CartPage />} /> {/* Добавляем маршрут для корзины */}
             
             {/* Маршруты для обработки страниц коллекций и товаров */}
             {/* Более специфичные маршруты должны идти первыми */}
