@@ -4,7 +4,9 @@ import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { formatPrice, formatDiscount } from '@/lib/priceUtils';
-import { Heart, ShoppingCart } from 'lucide-react';
+import { Heart } from 'lucide-react';
+import { toast } from "sonner";
+import { useAuth } from '@/hooks/useAuth';
 
 interface Variant {
     id: number;
@@ -28,8 +30,22 @@ interface Product {
     variants: Variant[];
 }
 
+interface CartItem {
+    id: number; // variant ID
+    productId: number;
+    name: string;
+    article: string;
+    image: string;
+    color: string;
+    size: string;
+    price: number;
+    quantity: number;
+    stock: number;
+}
+
 export default function ProductPage() {
     const { gender, season, article } = useParams();
+    const { user } = useAuth(); // Получаем данные о пользователе
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
@@ -83,7 +99,6 @@ export default function ProductPage() {
                     const firstAvailable = fetchedProduct.variants.find(v => v.stock > 0);
                     setSelectedVariant(firstAvailable || fetchedProduct.variants[0] || null);
                     
-                    // Check if the product is in favorites
                     const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
                     if (currentFavorites.includes(fetchedProduct.id)) {
                         setIsFavorite(true);
@@ -106,12 +121,60 @@ export default function ProductPage() {
         let currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
         if (isFavorite) {
             currentFavorites = currentFavorites.filter((favId: number) => favId !== product.id);
+            toast.info("Товар удален из избранного.");
         } else {
             currentFavorites.push(product.id);
+            toast.success("Товар добавлен в избранное!");
         }
 
         localStorage.setItem('favorites', JSON.stringify(currentFavorites));
         setIsFavorite(!isFavorite);
+        window.dispatchEvent(new CustomEvent('favoritesChange'));
+    };
+
+    const handleAddToCart = () => {
+        if (!product || !selectedVariant) {
+            toast.error("Пожалуйста, выберите цвет и размер.");
+            return;
+        }
+
+        if (selectedVariant.stock <= 0) {
+            toast.warning("Данного размера нет в наличии.");
+            return;
+        }
+
+        const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
+        const existingItemIndex = cart.findIndex(item => item.id === selectedVariant.id);
+        
+        let priceForCart = selectedVariant.purchase_price;
+        if (selectedVariant.discount > 0) {
+            priceForCart = selectedVariant.sale_price;
+        } else if (user && user.sale > 0) {
+            priceForCart = selectedVariant.purchase_price * (1 - user.sale / 100);
+        }
+
+        if (existingItemIndex !== -1) {
+            cart[existingItemIndex].quantity += 1;
+            cart[existingItemIndex].price = priceForCart; // Обновляем цену на случай, если она изменилась
+        } else {
+            const newItem: CartItem = {
+                id: selectedVariant.id,
+                productId: product.id,
+                name: product.name,
+                article: product.article,
+                image: product.image,
+                color: selectedVariant.color,
+                size: selectedVariant.size,
+                price: priceForCart,
+                quantity: 1,
+                stock: selectedVariant.stock,
+            };
+            cart.push(newItem);
+        }
+
+        localStorage.setItem('cart', JSON.stringify(cart));
+        toast.success("Товар добавлен в корзину!");
+        window.dispatchEvent(new CustomEvent('cartChange'));
     };
 
     if (loading) {
@@ -133,15 +196,20 @@ export default function ProductPage() {
         );
     }
 
-    const isNew = selectedVariant && (!selectedVariant.discount || Number(selectedVariant.discount) === 0);
     const inStock = selectedVariant && selectedVariant.stock > 0;
+    const hasDiscount = selectedVariant && selectedVariant.discount > 0;
+    const userSale = user?.sale > 0;
+
+    let yourPrice = selectedVariant ? selectedVariant.purchase_price : 0;
+    if (selectedVariant && !hasDiscount && userSale) {
+        yourPrice = selectedVariant.purchase_price * (1 - user.sale / 100);
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
             <div className="container mx-auto px-4 py-8">
                 <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-                    {/* Product Image */}
                     <div>
                         <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden sticky top-24">
                             <img 
@@ -156,7 +224,6 @@ export default function ProductPage() {
                         </div>
                     </div>
 
-                    {/* Product Details */}
                     <div>
                         <div className="flex justify-between items-start">
                             <div>
@@ -166,23 +233,33 @@ export default function ProductPage() {
                             <div className="flex items-center gap-3">
                                <Button variant="ghost" size="icon" onClick={handleToggleFavorite}>
                                    <Heart className="h-6 w-6" fill={isFavorite ? "#ef4444" : "none"} color={isFavorite ? "#ef4444" : "currentColor"}/>
-                                </Button> 
-                               <Button variant="ghost" size="icon"><ShoppingCart className="h-6 w-6"/></Button> 
+                                </Button>
                             </div>
                         </div>
                         
                         {selectedVariant && (
-                            <div className="my-5">
-                                <p className="text-3xl font-bold text-blue-600">Ваша цена: {formatPrice(selectedVariant.sale_price)}</p>
-                                {isNew ? (
-                                    <p className="text-green-600 font-semibold mt-1">Новая коллекция</p>
+                             <div className="my-5 space-y-2">
+                                {hasDiscount ? (
+                                    // Сценарий 1: Есть скидка на товар
+                                    <>
+                                        <p className="text-xl text-gray-500 line-through">Цена: {formatPrice(selectedVariant.purchase_price)}</p>
+                                        <p className="text-2xl font-bold text-red-600">Новая цена: {formatPrice(selectedVariant.sale_price)}</p>
+                                        <p className="text-red-600 font-semibold">Скидка: {formatDiscount(selectedVariant.discount)}</p>
+                                    </>
                                 ) : (
-                                    <p className="text-red-600 font-semibold mt-1">Скидка: {formatDiscount(selectedVariant.discount)}</p>
+                                    // Сценарий 2: Нет скидки на товар (может быть персональная)
+                                    <>
+                                        <p className={`text-xl ${userSale ? 'text-gray-500 line-through' : 'text-gray-700'}`}>Цена: {formatPrice(selectedVariant.purchase_price)}</p>
+                                        {userSale && (
+                                            <p className="text-2xl font-bold text-blue-600">Ваша цена: {formatPrice(yourPrice)}</p>
+                                        )}
+                                    </>
                                 )}
+
                                 {inStock ? (
-                                    <p className="text-sm text-gray-600 mt-1">В наличии</p>
+                                    <p className="text-sm text-green-600 pt-2">В наличии</p>
                                 ) : (
-                                    <p className="text-sm text-red-600 mt-1">Нет в наличии</p>
+                                    <p className="text-sm text-red-600 pt-2">Нет в наличии</p>
                                 )}
                             </div>
                         )}
@@ -212,7 +289,7 @@ export default function ProductPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3 mt-8">
-                            <Button size="lg" className="flex-1 bg-gray-800 hover:bg-gray-900">Купить</Button>
+                            <Button size="lg" className="flex-1 bg-gray-800 hover:bg-gray-900" onClick={handleAddToCart} disabled={!inStock}>Купить</Button>
                             <Button size="lg" variant="outline" className="flex-1">Заказать быстро</Button>
                         </div>
                         

@@ -2,94 +2,66 @@ import React, { useEffect, useState } from 'react';
 import LiveSearch from './LiveSearch';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { supabaseApi } from '@/lib/supabase-api';
 import { useAuth } from '@/hooks/useAuth';
+
+interface CartItem {
+  quantity: number;
+}
 
 const Header = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [menCategories, setMenCategories] = useState([]);
-  const [womenCategories, setWomenCategories] = useState([]);
-  const [boyCategories, setBoyCategories] = useState([]);
-  const [girlCategories, setGirlCategories] = useState([]);
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
-  useEffect(() => {
-    // Загружаем категории с использованием Supabase API
-    const loadCategories = async () => {
-      try {
-        const [men, women, boy, girl] = await Promise.all([
-          supabaseApi.getCategories('чол'),
-          supabaseApi.getCategories('жiн'),
-          supabaseApi.getCategories('хлопч'),
-          supabaseApi.getCategories('дiвч')
-        ]);
-        
-        setMenCategories(men);
-        setWomenCategories(women);
-        setBoyCategories(boy);
-        setGirlCategories(girl);
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      }
-    };
-
-    loadCategories();
-  }, []);
-
-  // Загружаем количество избранных товаров из localStorage
+  // Загружаем количество избранных товаров
   useEffect(() => {
     const updateFavoritesCount = () => {
       try {
         const savedFavorites = localStorage.getItem('favorites');
-        if (savedFavorites) {
-          const favorites = JSON.parse(savedFavorites);
-          setFavoritesCount(Array.isArray(favorites) ? favorites.length : 0);
-        } else {
-          setFavoritesCount(0);
-        }
+        const favorites = savedFavorites ? JSON.parse(savedFavorites) : [];
+        setFavoritesCount(Array.isArray(favorites) ? favorites.length : 0);
       } catch (e) {
         console.error('Error parsing favorites', e);
         setFavoritesCount(0);
       }
     };
 
-    // Инициализируем счетчик
     updateFavoritesCount();
+    window.addEventListener('storage', (e) => e.key === 'favorites' && updateFavoritesCount());
+    window.addEventListener('favoritesChange', updateFavoritesCount);
 
-    // Добавляем обработчик события для отслеживания изменений в localStorage
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'favorites') {
-        updateFavoritesCount();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Также создаем пользовательское событие для обновления из других компонентов
-    const handleFavoritesChange = () => {
-      updateFavoritesCount();
-    };
-
-    window.addEventListener('favoritesChange', handleFavoritesChange);
-
-    // Очищаем обработчики при размонтировании
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('favoritesChange', handleFavoritesChange);
+      window.removeEventListener('storage', (e) => e.key === 'favorites' && updateFavoritesCount());
+      window.removeEventListener('favoritesChange', updateFavoritesCount);
     };
   }, []);
 
-  // Хук для управления hover
-  const [openMenu, setOpenMenu] = useState(null);
-  const handleMouseEnter = (menu) => setOpenMenu(menu);
-  const handleMouseLeave = () => setOpenMenu(null);
+  // Загружаем количество товаров в корзине
+  useEffect(() => {
+    const updateCartCount = () => {
+      try {
+        const savedCart = localStorage.getItem('cart');
+        const cartItems: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
+        const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+        setCartCount(totalItems);
+      } catch (e) {
+        console.error('Error parsing cart', e);
+        setCartCount(0);
+      }
+    };
+
+    updateCartCount();
+    window.addEventListener('storage', (e) => e.key === 'cart' && updateCartCount());
+    window.addEventListener('cartChange', updateCartCount);
+
+    return () => {
+      window.removeEventListener('storage', (e) => e.key === 'cart' && updateCartCount());
+      window.removeEventListener('cartChange', updateCartCount);
+    };
+  }, []);
+
 
   const handleLogout = () => {
     logout();
@@ -97,7 +69,7 @@ const Header = () => {
   };
 
   return (
-    <header className="border-b bg-white shadow-sm">
+    <header className="border-b bg-white shadow-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
@@ -110,7 +82,6 @@ const Header = () => {
             </div>
           </Link>
 
-          {/* Строка поиска: на мобильных скрываем полноразмерную строку и показываем только кнопку-лупу */}
           <div className="flex-1 w-full max-w-2xl mx-0 md:mx-4">
             <div className="hidden md:block">
               <LiveSearch />
@@ -126,13 +97,12 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Блок пользователя */}
           <div className="flex items-center ml-2">
-            <Link to="/favorites" className="mr-2 text-gray-600 hover:text-red-500">
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <Link to="/favorites" className="mr-4">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 relative">
                 <span>Избранное</span>
                 {favoritesCount > 0 && (
-                  <span className="bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                     {favoritesCount}
                   </span>
                 )}
@@ -140,22 +110,27 @@ const Header = () => {
             </Link>
             {user ? (
                <>
-                <Link to="/cart">
-                  <Button className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
-                    Корзина
+                <Link to="/cart" className="mr-2">
+                  <Button variant='outline' size='sm' className="flex items-center gap-2 relative">
+                    <span>Корзина</span>
+                    {cartCount > 0 && (
+                       <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                         {cartCount}
+                       </span>
+                    )}
                   </Button>
                 </Link>
-                <Button onClick={handleLogout} className="ml-2 bg-blue-100 text-blue-700 px-3 py-2 rounded font-semibold hover:bg-blue-200 transition-all text-sm">
+                <Button onClick={handleLogout} variant='outline' size='sm' className="ml-2">
                   Выйти
                 </Button>
               </>
             ) : (
               <>
-                <Link to="/login" className="bg-green-100 text-green-700 px-3 py-2 rounded font-semibold hover:bg-green-200 transition-all text-sm">
-                  Вход
+                <Link to="/login">
+                    <Button variant='outline' size='sm'>Вход</Button>
                 </Link>
-                <Link to="/registration" className="ml-2 bg-blue-100 text-blue-700 px-3 py-2 rounded font-semibold hover:bg-blue-200 transition-all text-sm">
-                  Регистрация
+                <Link to="/registration" className="ml-2">
+                    <Button variant='outline' size='sm'>Регистрация</Button>
                 </Link>
               </>
             )}
