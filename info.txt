@@ -1,7 +1,0 @@
-
-Деплой на netlify
-netlify deploy --dir=dist --prod
-
-
-pass github 
-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

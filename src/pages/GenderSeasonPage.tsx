@@ -4,7 +4,10 @@ import Header from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
-import { supabaseApi } from '@/lib/supabase-api';
+import { useIsProduct } from '@/hooks/useIsProduct';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import { ProductViewInline } from '@/components/ProductViewInline';
+import { formatPrice, formatDiscount } from '@/lib/priceUtils';
 
 export default function GenderSeasonPage() {
     const { season, gender, categoryId } = useParams();
@@ -27,219 +30,20 @@ export default function GenderSeasonPage() {
         console.log('Полный location:', location);
     }, [season, gender, categoryId, decodedSeason, location]);
 
-    const [seasons, setSeasons] = useState<string[]>([]); // Все сезоны для коллекции
-    const [seasonsWithProducts, setSeasonsWithProducts] = useState<string[]>([]); // Сезоны с товарами по выбранной категории
-    const [categories, setCategories] = useState<any[]>([]);
+    const { isProduct, productData } = useIsProduct(decodedSeason, categoryId, []); // Временно пустой массив сезонов
+    const { seasons, categories, loading, setLoading } = useCatalogData(gender, decodedSeason, isProduct);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [products, setProducts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
     const [showCategories, setShowCategories] = useState<boolean>(false);
-    const [isProduct, setIsProduct] = useState<boolean | null>(null); // null = не определено, true = товар, false = сезон
-    const [productData, setProductData] = useState<any>(null); // Данные товара, если это товар
     
     // Состояние для сортировки по цене
     const [priceSortOrder, setPriceSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
 
-    // Проверка, является ли season настоящим сезоном или артикулом товара
-    useEffect(() => {
-        // Если у нас есть categoryId, это точно не товар
-        if (categoryId) {
-            setIsProduct(false);
-            return;
-        }
-        
-        // Если season равен "all", это точно не товар
-        if (decodedSeason === 'all') {
-            setIsProduct(false);
-            return;
-        }
-        
-        // Если season совпадает с одним из известных сезонов, это точно сезон
-        if (decodedSeason && seasons.includes(decodedSeason)) {
-            setIsProduct(false);
-            return;
-        }
-        
-        // Если season не совпадает с известными сезонами, проверяем, является ли он артикулом товара
-        if (decodedSeason) {
-            const checkIfProductExists = async () => {
-                try {
-                    console.log('Проверка, является ли параметр товаром:', decodedSeason);
-                    const productData = await supabaseApi.getProduct(decodedSeason);
-                    
-                    if (productData && productData.product) {
-                        console.log('Найден товар:', productData.product);
-                        setIsProduct(true);
-                        setProductData(productData);
-                    } else {
-                        console.log('Товар не найден, считаем параметр сезоном');
-                        setIsProduct(false);
-                    }
-                } catch (error) {
-                    console.error('Ошибка при проверке товара:', error);
-                    // Если ошибка, считаем, что это сезон
-                    setIsProduct(false);
-                }
-            };
-            
-            checkIfProductExists();
-        } else {
-            // Если нет decodedSeason, это не товар
-            setIsProduct(false);
-        }
-    }, [decodedSeason, gender, categoryId, seasons]);
-
-    // Загрузка сезонов через Supabase для текущей коллекции
-    useEffect(() => {
-        if (!gender || isProduct) return; // Не загружаем сезоны, если это товар
-        
-        const loadSeasons = async () => {
-            try {
-                console.log('Загрузка сезонов для коллекции:', gender);
-                // Получаем уникальные сезоны для текущего пола
-                const { data, error } = await supabase
-                    .from('products')
-                    .select('season')
-                    .eq('gender', gender) // Используем точное совпадение
-                    .not('season', 'is', null)
-                    .not('season', 'eq', '');
-
-                if (error) {
-                    console.error('Seasons loading error:', error);
-                    setSeasons([]);
-                    return;
-                }
-
-                console.log('Полученные сезоны:', data);
-                // Получаем уникальные значения сезонов
-                const uniqueSeasons = [...new Set(data?.map(item => item.season).filter(Boolean))] as string[];
-                console.log('Уникальные сезоны:', uniqueSeasons);
-                setSeasons(uniqueSeasons);
-            } catch (error) {
-                console.error('Seasons loading failed:', error);
-                setSeasons([]);
-            }
-        };
-        
-        loadSeasons();
-    }, [gender, isProduct]);
-
-    // Загрузка сезонов с товарами по выбранной категории
-    useEffect(() => {
-        if (!gender || isProduct) return; // Не загружаем сезоны, если это товар
-        
-        const loadSeasonsWithProducts = async () => {
-            try {
-                console.log('Загрузка сезонов с товарами для коллекции:', gender, 'категория:', selectedCategory);
-                let query = supabase
-                    .from('products')
-                    .select('season')
-                    .eq('gender', gender) // Используем точное совпадение
-                    .not('season', 'is', null)
-                    .not('season', 'eq', '')
-                    .gt('variants.stock', 0); // Только товары в наличии
-
-                // Если выбрана категория, фильтруем по ней
-                if (selectedCategory) {
-                    query = query.eq('category_id', selectedCategory);
-                }
-
-                const { data, error } = await query;
-
-                if (error) {
-                    console.error('Seasons with products loading error:', error);
-                    setSeasonsWithProducts([]);
-                    return;
-                }
-
-                console.log('Полученные сезоны с товарами:', data);
-                // Получаем уникальные значения сезонов
-                const uniqueSeasons = [...new Set(data?.map(item => item.season).filter(Boolean))] as string[];
-                console.log('Уникальные сезоны с товарами:', uniqueSeasons);
-                setSeasonsWithProducts(uniqueSeasons);
-            } catch (error) {
-                console.error('Seasons with products loading failed:', error);
-                setSeasonsWithProducts([]);
-            }
-        };
-        
-        loadSeasonsWithProducts();
-    }, [gender, selectedCategory, isProduct]);
-
-    // Загрузка категорий
-    useEffect(() => {
-        if (!gender || isProduct) return; // Не загружаем категории, если это товар
-        
-        const loadCategories = async () => {
-            try {
-                console.log('Загрузка категорий для коллекции:', gender, 'сезон:', decodedSeason);
-                console.log('Подготовка запроса категорий с параметрами:', { gender, decodedSeason });
-                
-                // Если у нас есть конкретный сезон (не "all"), загружаем категории с товарами для этого сезона
-                if (decodedSeason && decodedSeason !== 'all') {
-                    let query = supabase
-                        .from('products')
-                        .select(`
-                            category_id,
-                            categories(name)
-                        `)
-                        .eq('gender', gender) // Используем точное совпадение
-                        .gt('variants.stock', 0) // Только товары в наличии
-                        .eq('season', decodedSeason); // Фильтр по сезону
-                    
-                    console.log('Запрос к Supabase для категорий:', query);
-
-                    const { data, error } = await query;
-
-                    if (error) {
-                        console.error('Categories with products loading error:', error);
-                        // В случае ошибки загружаем все категории
-                        const allCats = await supabaseApi.getCategories(gender);
-                        setCategories(allCats);
-                        return;
-                    }
-
-                    console.log('Полученные категории с товарами:', data);
-                    // Получаем уникальные категории
-                    const uniqueCategories = (data && data.length > 0) ? data.reduce((acc, item) => {
-                        if (item.category_id && !acc.find((cat: any) => cat.id === item.category_id)) {
-                            acc.push({
-                                id: item.category_id,
-                                name: (item.categories as any)?.name || ''
-                            });
-                        }
-                        return acc;
-                    }, [] as Array<{id: number, name: string}>) : [];
-                    
-                    console.log('Уникальные категории с товарами:', uniqueCategories);
-                    setCategories(uniqueCategories);
-                } else {
-                    // Если у нас "все сезоны" или нет сезона, загружаем все категории
-                    const allCats = await supabaseApi.getCategories(gender);
-                    setCategories(allCats);
-                }
-            } catch (error) {
-                console.error('Categories loading failed:', error);
-                // В случае ошибки пробуем загрузить все категории
-                try {
-                    const allCats = await supabaseApi.getCategories(gender);
-                    setCategories(allCats);
-                } catch (fallbackError) {
-                    console.error('Fallback categories loading failed:', fallbackError);
-                    setCategories([]);
-                }
-            }
-        };
-        
-        loadCategories();
-    }, [gender, decodedSeason, isProduct]);
-    
     // Отладочный вывод
     useEffect(() => {
         console.log('seasons:', seasons);
-        console.log('seasonsWithProducts:', seasonsWithProducts);
         console.log('selectedCategory:', selectedCategory);
-    }, [seasons, seasonsWithProducts, selectedCategory]);
+    }, [seasons, selectedCategory]);
 
     // Сброс всех фильтров при смене коллекции (только при фактической смене коллекции)
     useEffect(() => {
@@ -283,8 +87,8 @@ export default function GenderSeasonPage() {
                     .gt('variants.stock', 0);
 
                 // Фильтр по категории если выбрана
-                if (categoryId) {
-                    query = query.eq('category_id', categoryId);
+                if (selectedCategory) {
+                    query = query.eq('category_id', selectedCategory);
                 }
 
                 // Фильтр по сезону если есть (кроме "all")
@@ -377,7 +181,7 @@ export default function GenderSeasonPage() {
         if (isProduct !== null) {
             loadProducts();
         }
-    }, [decodedSeason, gender, categoryId, isProduct]);
+    }, [decodedSeason, gender, selectedCategory, isProduct, categories]);
 
     // Если еще не определено, что это за параметр, показываем загрузку
     if (isProduct === null && (decodedSeason || categoryId)) {
@@ -386,30 +190,7 @@ export default function GenderSeasonPage() {
 
     // Если это товар, отображаем страницу товара
     if (isProduct === true && productData) {
-        // Здесь должна быть логика отображения страницы товара
-        // Но так как у нас уже есть отдельный компонент ProductPage, 
-        // мы можем просто перенаправить на него
-        // Однако, чтобы избежать бесконечного цикла, мы не будем перенаправлять,
-        // а отобразим страницу товара прямо здесь
-        
-        // Импортируем логику отображения товара из ProductPage
-        return (
-            <div className="min-h-screen bg-gray-50">
-                <Header />
-                <div className="container mx-auto px-4 py-8">
-                    <div className="mb-4 flex items-center gap-3">
-                        <Button onClick={() => navigate(-1)} variant="ghost">← Назад</Button>
-                        <Link to="/"><Button variant="outline">Домой</Button></Link>
-                    </div>
-                    <div className="text-center">
-                        <h1>Страница товара</h1>
-                        <p>Артикул: {productData.product?.article}</p>
-                        <p>Название: {productData.product?.name}</p>
-                        {/* Здесь должна быть полная реализация страницы товара */}
-                    </div>
-                </div>
-            </div>
-        );
+        return <ProductViewInline productData={productData} gender={gender} />;
     }
 
     const getGenderTitle = (g: string) => {
@@ -436,43 +217,6 @@ export default function GenderSeasonPage() {
     // Функция для получения списка коллекций, кроме текущей
     const getOtherGenders = () => {
         return getAllGenders().filter(g => g.id !== gender);
-    };
-
-    const formatPrice = (v: any) => {
-        if (v === null || v === undefined || v === '') return '-';
-        
-        // Handle database format where comma is thousands separator (e.g., "2,109")
-        let priceStr = String(v).replace(/\s+/g, '');
-        
-        // If string contains comma, treat it as thousands separator
-        if (priceStr.includes(',')) {
-            // Remove comma and parse as integer (2,109 -> 2109)
-            priceStr = priceStr.replace(/,/g, '');
-        }
-        
-        const n = Number(priceStr);
-        if (Number.isNaN(n)) return String(v);
-        
-        // Manual formatting to ensure correct display
-        // Format with space as thousands separator and always show ,0
-        let formatted = n.toString();
-        
-        // Add space thousands separator for numbers >= 1000
-        if (n >= 1000) {
-            formatted = n.toLocaleString('ru-RU');
-        }
-        
-        // Always add ,0 at the end
-        formatted += ',0';
-        
-        return formatted + ' грн';
-    };
-
-    const formatDiscount = (d: any) => {
-        if (d === null || d === undefined || d === '') return '-';
-        const n = Number(String(d).replace(',', '.'));
-        if (Number.isNaN(n)) return String(d);
-        return `${n}%`;
     };
 
     // Функция для получения ссылки на другой сезон
