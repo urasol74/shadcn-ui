@@ -34,6 +34,7 @@ export default function ProductPage() {
     const [loading, setLoading] = useState(true);
     const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
     const [variantsByColor, setVariantsByColor] = useState<Record<string, Variant[]>>({});
+    const [isFavorite, setIsFavorite] = useState(false);
 
     const decodedSeason = season ? decodeURIComponent(season) : null;
 
@@ -61,7 +62,7 @@ export default function ProductPage() {
                     console.error('Product loading error:', error);
                     setProduct(null);
                 } else {
-                    const fetchedProduct = data[0] as Product;
+                    const fetchedProduct = data[0] as unknown as Product;
                     setProduct(fetchedProduct);
 
                     const grouped: Record<string, Variant[]> = {};
@@ -73,16 +74,20 @@ export default function ProductPage() {
                         grouped[color].push(variant);
                     });
 
-                    // Sort sizes within each color group
                     for (const color in grouped) {
                         grouped[color].sort((a, b) => a.size.localeCompare(b.size, undefined, { numeric: true }));
                     }
 
                     setVariantsByColor(grouped);
 
-                    // Set a default selected variant
                     const firstAvailable = fetchedProduct.variants.find(v => v.stock > 0);
                     setSelectedVariant(firstAvailable || fetchedProduct.variants[0] || null);
+                    
+                    // Check if the product is in favorites
+                    const currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+                    if (currentFavorites.includes(fetchedProduct.id)) {
+                        setIsFavorite(true);
+                    }
                 }
             } catch (err) {
                 console.error('Exception while fetching product', err);
@@ -94,6 +99,20 @@ export default function ProductPage() {
 
         fetchProduct();
     }, [article, gender, decodedSeason]);
+
+    const handleToggleFavorite = () => {
+        if (!product) return;
+
+        let currentFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        if (isFavorite) {
+            currentFavorites = currentFavorites.filter((favId: number) => favId !== product.id);
+        } else {
+            currentFavorites.push(product.id);
+        }
+
+        localStorage.setItem('favorites', JSON.stringify(currentFavorites));
+        setIsFavorite(!isFavorite);
+    };
 
     if (loading) {
         return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Загрузка товара...</div>;
@@ -145,7 +164,9 @@ export default function ProductPage() {
                                 <p className="text-gray-500 text-sm">Артикул: {product.article}</p>
                             </div>
                             <div className="flex items-center gap-3">
-                               <Button variant="ghost" size="icon"><Heart className="h-6 w-6"/></Button> 
+                               <Button variant="ghost" size="icon" onClick={handleToggleFavorite}>
+                                   <Heart className="h-6 w-6" fill={isFavorite ? "#ef4444" : "none"} color={isFavorite ? "#ef4444" : "currentColor"}/>
+                                </Button> 
                                <Button variant="ghost" size="icon"><ShoppingCart className="h-6 w-6"/></Button> 
                             </div>
                         </div>
