@@ -3,7 +3,7 @@ import LiveSearch from './LiveSearch';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Heart, ShoppingCart, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { Heart, ShoppingCart, LogOut, LogIn, UserPlus, Search } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -88,7 +88,24 @@ const Header = () => {
             </Link>
 
             <div className="flex-1 w-full max-w-lg mx-2 sm:mx-4">
+              <div className="hidden md:block">
                 <LiveSearch />
+              </div>
+              <div className="block md:hidden text-right">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="ghost" size="icon">
+                      <Link to="/search">
+                        <Search className="h-5 w-5" />
+                        <span className="sr-only">Поиск</span>
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Поиск</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
 
             <div className="flex items-center space-x-1 sm:space-x-2">
