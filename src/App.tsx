@@ -14,7 +14,8 @@ import FavoritesPage from './pages/FavoritesPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
-import AdminPage from './pages/AdminPage'; // Import AdminPage
+import AdminPage from './pages/AdminPage';
+import UserOrdersPage from './pages/UserOrdersPage'; // Импорт новой страницы
 import React from 'react';
 
 const queryClient = new QueryClient();
@@ -33,7 +34,11 @@ const App = () => (
             <Route path="/order-success" element={<OrderSuccessPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/search" element={<SearchPage />} />
-            <Route path="/admin" element={<AdminPage />} /> {/* Add Admin Route */}
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
+            <Route path="/admin/user" element={<AdminPage />} />
+            <Route path="/admin/user/:id" element={<UserOrdersPage />} />
 
             {/* Legacy URL structure support */}
             <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />
