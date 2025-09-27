@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 interface User {
+  [x: string]: string;
   id: number;
   name: string;
   tel: string;

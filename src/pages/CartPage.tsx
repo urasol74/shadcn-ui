@@ -150,9 +150,11 @@ export default function CartPage() {
                                     <span>{formatPrice(totalPrice)}</span>
                                 </div>
                             </div>
-                            <Button className="w-full mt-6 h-11">
-                                Перейти к оформлению
-                            </Button>
+                            <Link to="/checkout" className="w-full">
+                                <Button className="w-full mt-6 h-11">
+                                    Перейти к оформлению
+                                </Button>
+                            </Link>
                         </CardContent>
                     </Card>
                 </div>
