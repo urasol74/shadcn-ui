@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/priceUtils';
-import { supabase } from '@/lib/supabase'; // Импортируем клиент Supabase
+import { supabase } from '@/lib/supabase';
 
 interface QuickOrderModalProps {
   isOpen: boolean;
@@ -38,13 +38,13 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant, use
 
   useEffect(() => {
     if (isOpen) {
-        if (user) {
-            setName(user.name || '');
-            setPhone(user.tel || '');
-        } else {
-            setName('');
-            setPhone('');
-        }
+      if (user) {
+        setName(user.name || '');
+        setPhone(user.tel || '');
+      } else {
+        setName('');
+        setPhone('');
+      }
     }
   }, [isOpen, user]);
 
@@ -61,37 +61,43 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant, use
     setIsSending(true);
 
     try {
-        // 1. Подготовка данных и запись в таблицу 'quick_order'
-        const quickOrderData = {
-            name: name,
-            tel: phone,
-            article: product.article,
-            color: selectedVariant.color,
-            size: selectedVariant.size,
-            order_date: new Date().toISOString(),
-        };
+      let price = 0;
+      if (selectedVariant.discount > 0) {
+        price = selectedVariant.sale_price;
+      } else if (user) {
+        const userDiscount = user.sale ?? 0;
+        price = selectedVariant.purchase_price * (1 - userDiscount / 100);
+      } else {
+        price = selectedVariant.purchase_price;
+      }
 
-        const { error: insertError } = await supabase.from('quick_order').insert(quickOrderData);
+      const quickOrderData = {
+        name: name,
+        tel: phone,
+        article: product.article,
+        color: selectedVariant.color,
+        size: selectedVariant.size,
+        order_date: new Date().toISOString(),
+        price: price,
+      };
 
-        if (insertError) {
-            // Если ошибка при записи в БД, останавливаем процесс
-            throw insertError;
-        }
+      const { data: insertedData, error: insertError } = await supabase
+        .from('quick_order')
+        .insert(quickOrderData)
+        .select();
 
-        // --- Логика определения цены для сообщения ---
-        let price = 0;
-        if (selectedVariant.discount > 0) {
-            price = selectedVariant.sale_price;
-        } else if (user) {
-            const userDiscount = user.sale ?? 0;
-            price = selectedVariant.purchase_price * (1 - userDiscount / 100);
-        } else {
-            price = selectedVariant.purchase_price;
-        }
-        // --------------------------------
+      if (insertError) {
+        throw insertError;
+      }
 
-        // 2. Если запись в БД успешна, отправляем уведомление в Telegram
-        const message = `
+      // Улучшенный вывод в консоль для отладки
+      console.log('==============================');
+      console.log('🚀 SUPABASE QUICK ORDER DEBUG 🚀');
+      console.log('Data SENT to database:', quickOrderData);
+      console.log('Data RETURNED from database:', insertedData);
+      console.log('==============================');
+
+      const message = `
 *⚡️ Быстрый заказ!* (Сохранен в БД)
 
 *Имя:* ${name}
@@ -103,31 +109,30 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant, use
 Цвет: ${selectedVariant.color}
 Размер: ${selectedVariant.size}
 *Цена: ${formatPrice(price)}*
-        `;
+      `;
 
-        const tgResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' }),
-        });
+      const tgResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' }),
+      });
 
-        const tgResult = await tgResponse.json();
+      const tgResult = await tgResponse.json();
 
-        if (tgResult.ok) {
-            toast.success('Ваш заказ успешно отправлен! Мы скоро с вами свяжемся.');
-        } else {
-            // Если ошибка Telegram, заказ все равно сохранен
-            console.error("Telegram API Error:", tgResult.description);
-            toast.warning("Заказ успешно сохранен, но не удалось отправить уведомление в Telegram.");
-        }
-        
-        onClose();
+      if (tgResult.ok) {
+        toast.success('Ваш заказ успешно отправлен! Мы скоро с вами свяжемся.');
+      } else {
+        console.error("Telegram API Error:", tgResult.description);
+        toast.warning("Заказ успешно сохранен, но не удалось отправить уведомление в Telegram.");
+      }
+
+      onClose();
 
     } catch (error: any) {
-        console.error('Quick Order Submission Error:', error);
-        toast.error(error.message || 'Не удалось сохранить заказ. Пожалуйста, попробуйте еще раз.');
+      console.error('Quick Order Submission Error:', error);
+      toast.error(error.message || 'Не удалось сохранить заказ. Пожалуйста, попробуйте еще раз.');
     } finally {
-        setIsSending(false);
+      setIsSending(false);
     }
   };
 

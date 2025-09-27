@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/priceUtils'; // Импортируем форматирование цены
 
 // Тип для быстрого заказа
 interface QuickOrder {
@@ -15,6 +16,7 @@ interface QuickOrder {
     color: string;
     size: string;
     order_date: string;
+    price: number; // Добавляем поле цены
 }
 
 const QuickOrdersAdminPage = () => {
@@ -29,7 +31,7 @@ const QuickOrdersAdminPage = () => {
         const { data, error } = await supabase
             .from('quick_order')
             .select('*')
-            .order('order_date', { ascending: false }); // Новые заказы сверху
+            .order('order_date', { ascending: false });
 
         if (error) {
             console.error('Error fetching quick orders:', error);
@@ -87,6 +89,7 @@ const QuickOrdersAdminPage = () => {
                             <th className="py-2 px-4 border-b font-semibold">Артикул</th>
                             <th className="py-2 px-4 border-b font-semibold">Цвет</th>
                             <th className="py-2 px-4 border-b font-semibold">Размер</th>
+                            <th className="py-2 px-4 border-b font-semibold">Цена</th>
                             <th className="py-2 px-4 border-b font-semibold">Дата</th>
                             <th className="py-2 px-4 border-b font-semibold">Действия</th>
                         </tr>
@@ -100,6 +103,7 @@ const QuickOrdersAdminPage = () => {
                                 <td className="py-2 px-4 border-b">{order.article}</td>
                                 <td className="py-2 px-4 border-b">{order.color}</td>
                                 <td className="py-2 px-4 border-b">{order.size}</td>
+                                <td className="py-2 px-4 border-b font-semibold">{formatPrice(order.price)}</td>
                                 <td className="py-2 px-4 border-b">{new Date(order.order_date).toLocaleString('uk-UA')}</td>
                                 <td className="py-2 px-4 border-b">
                                     <Button variant="ghost" size="icon" onClick={() => handleDelete(order.id)}>
