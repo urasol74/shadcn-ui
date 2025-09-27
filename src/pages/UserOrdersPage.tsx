@@ -5,12 +5,11 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-// Тип для данных заказа
+// Обновленный тип для заказа, включающий вложенные данные пользователя
 interface Order {
     id: number;
     phone: string;
-    full_name: string;
-    user_id: number;
+    full_name: string; // Имя получателя при заказе
     article: string;
     color: string;
     size: string;
@@ -19,43 +18,61 @@ interface Order {
     sale: number;
     city: string;
     nova_poshta_office: string;
-    purchase_date: string; // Используем purchase_date как поле для даты
+    purchase_date: string;
+    user: { // Данные из связанной таблицы 'user'
+        name: string; // Имя пользователя из его профиля
+    } | null;
 }
 
 const UserOrdersPage = () => {
-    const { id } = useParams<{ id: string }>(); // Получаем id пользователя из URL
+    const { id } = useParams<{ id: string }>();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [userName, setUserName] = useState<string>('');
+    const [userName, setUserName] = useState<string>(''); // Для заголовка страницы
 
     useEffect(() => {
-        const fetchOrders = async () => {
+        const fetchUserData = async () => {
             if (!id) return;
-
+            
             setLoading(true);
             setError(null);
 
-            // 1. Получаем заказы для конкретного user_id
+            // 1. Получаем имя пользователя для заголовка
+            const { data: userData, error: userError } = await supabase
+                .from('user')
+                .select('name')
+                .eq('id', id)
+                .single();
+
+            if (userError) {
+                console.error('Error fetching user name:', userError);
+                setError('Не удалось найти клиента.');
+            } else if (userData) {
+                setUserName(userData.name);
+            }
+
+            // 2. Получаем заказы клиента, подтягивая имя из таблицы user
             const { data: ordersData, error: ordersError } = await supabase
                 .from('card')
-                .select('*')
-                .eq('user_id', id);
+                .select(`
+                    *,
+                    user:user_id ( name )
+                `)
+                .eq('user_id', id)
+                .order('purchase_date', { ascending: false }); // Сортируем по дате
 
             if (ordersError) {
                 console.error('Error fetching orders:', ordersError);
                 setError('Не удалось загрузить заказы клиента.');
             } else if (ordersData) {
-                // Устанавливаем имя пользователя из первого заказа (оно везде одинаковое)
-                if (ordersData.length > 0) {
-                    setUserName(ordersData[0].full_name);
-                }
-                setOrders(ordersData);
+                setOrders(ordersData as Order[]);
             }
+            
             setLoading(false);
         };
 
-        fetchOrders();
+        fetchUserData();
     }, [id]);
 
     const renderContent = () => {
@@ -78,8 +95,8 @@ const UserOrdersPage = () => {
                         <tr>
                             <th className="py-2 px-4 border-b font-semibold">ID заказа</th>
                             <th className="py-2 px-4 border-b font-semibold">Phone</th>
-                            <th className="py-2 px-4 border-b font-semibold">Full Name</th>
-                            <th className="py-2 px-4 border-b font-semibold">User ID</th>
+                            <th className="py-2 px-4 border-b font-semibold">Имя получателя</th>
+                            <th className="py-2 px-4 border-b font-semibold">Имя клиента</th>
                             <th className="py-2 px-4 border-b font-semibold">Article</th>
                             <th className="py-2 px-4 border-b font-semibold">Color</th>
                             <th className="py-2 px-4 border-b font-semibold">Size</th>
@@ -96,7 +113,7 @@ const UserOrdersPage = () => {
                                 <td className="py-2 px-4 border-b">{order.id}</td>
                                 <td className="py-2 px-4 border-b">{order.phone}</td>
                                 <td className="py-2 px-4 border-b">{order.full_name}</td>
-                                <td className="py-2 px-4 border-b">{order.user_id}</td>
+                                <td className="py-2 px-4 border-b">{order.user ? order.user.name : 'N/A'}</td>
                                 <td className="py-2 px-4 border-b">{order.article}</td>
                                 <td className="py-2 px-4 border-b">{order.color}</td>
                                 <td className="py-2 px-4 border-b">{order.size}</td>
