@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
@@ -7,7 +7,15 @@ import { formatPrice, formatDiscount } from '@/lib/priceUtils';
 import { Heart } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
-import { QuickOrderModal } from '@/components/QuickOrderModal'; // Импортируем модальное окно
+import { QuickOrderModal } from '@/components/QuickOrderModal';
+import type { CarouselApi } from "@/components/ui/carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface Variant {
     id: number;
@@ -44,6 +52,8 @@ interface CartItem {
     stock: number;
 }
 
+const SUPABASE_STORAGE_URL = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site';
+
 export default function ProductPage() {
     const { gender, season, article } = useParams();
     const { user } = useAuth();
@@ -54,8 +64,57 @@ export default function ProductPage() {
     const [variantsByColor, setVariantsByColor] = useState<Record<string, Variant[]>>({});
     const [isFavorite, setIsFavorite] = useState(false);
     const [isQuickOrderModalOpen, setIsQuickOrderModalOpen] = useState(false);
+    
+    const [api, setApi] = useState<CarouselApi>()
+    const [current, setCurrent] = useState(0)
 
     const decodedSeason = season ? decodeURIComponent(season) : null;
+
+    const productImages = useMemo(() => {
+        if (!product || !product.image) return [];
+        const mainImage = `${SUPABASE_STORAGE_URL}/${product.image}`;
+        const baseArticle = product.image.replace(/\.webp$/, '');
+        const additionalImages = Array.from({ length: 5 }, (_, i) => `${SUPABASE_STORAGE_URL}/${baseArticle}-${i + 1}.webp`);
+        return [mainImage, ...additionalImages];
+    }, [product]);
+
+    const [verifiedImages, setVerifiedImages] = useState<string[]>([]);
+
+    useEffect(() => {
+        const verifyImages = async () => {
+            const verified: string[] = [];
+            for (const imageUrl of productImages) {
+                try {
+                    const response = await fetch(imageUrl, { method: 'HEAD' });
+                    if (response.ok) {
+                        verified.push(imageUrl);
+                    }
+                } catch (error) {
+                    // Image does not exist, do nothing
+                }
+            }
+             if (verified.length === 0 && product?.image) {
+                verified.push(`${SUPABASE_STORAGE_URL}/${product.image}`);
+            }
+            setVerifiedImages(verified);
+        };
+
+        if (productImages.length > 0) {
+            verifyImages();
+        }
+    }, [productImages, product?.image]);
+
+    useEffect(() => {
+        if (!api) {
+          return
+        }
+     
+        setCurrent(api.selectedScrollSnap())
+     
+        api.on("select", () => {
+          setCurrent(api.selectedScrollSnap())
+        })
+      }, [api])
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -232,16 +291,40 @@ export default function ProductPage() {
             <div className="container mx-auto px-4 py-8">
                 <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                     <div>
-                        <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden sticky top-24">
-                            <img 
-                                src={product.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${product.image}` : "https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp"}
-                                alt={product.name}
-                                className="max-w-full max-h-full object-contain"
-                                onError={({ currentTarget }) => {
-                                    currentTarget.onerror = null;
-                                    currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
-                                }}
-                            />
+                         <Carousel className="w-full max-w-xl mx-auto" setApi={setApi}>
+                            <CarouselContent>
+                                {verifiedImages.map((src, index) => (
+                                    <CarouselItem key={index}>
+                                        <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                            <img 
+                                                src={src}
+                                                alt={`${product.name} - изображение ${index + 1}`}
+                                                className="max-w-full max-h-full object-contain"
+                                                onError={({ currentTarget }) => {
+                                                    currentTarget.onerror = null;
+                                                    currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
+                                                }}
+                                            />
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <CarouselPrevious />
+                            <CarouselNext />
+                        </Carousel>
+                        <div className="flex justify-center gap-2 mt-4">
+                            {verifiedImages.map((src, index) => (
+                                <button 
+                                    key={index} 
+                                    onClick={() => api?.scrollTo(index)}
+                                    className={`w-20 h-20 rounded-md overflow-hidden border-2 ${current === index ? 'border-blue-500' : 'border-transparent'}`}>
+                                    <img 
+                                        src={src} 
+                                        alt={`Миниатюра ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </button>
+                            ))}
                         </div>
                     </div>
 
