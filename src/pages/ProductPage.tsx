@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { formatPrice, formatDiscount } from '@/lib/priceUtils';
 import { Heart } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
+import { QuickOrderModal } from '@/components/QuickOrderModal'; // Импортируем модальное окно
 
 interface Variant {
     id: number;
@@ -45,12 +46,14 @@ interface CartItem {
 
 export default function ProductPage() {
     const { gender, season, article } = useParams();
-    const { user } = useAuth(); // Получаем данные о пользователе
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
     const [variantsByColor, setVariantsByColor] = useState<Record<string, Variant[]>>({});
     const [isFavorite, setIsFavorite] = useState(false);
+    const [isQuickOrderModalOpen, setIsQuickOrderModalOpen] = useState(false);
 
     const decodedSeason = season ? decodeURIComponent(season) : null;
 
@@ -133,6 +136,16 @@ export default function ProductPage() {
     };
 
     const handleAddToCart = () => {
+        if (!user) {
+            toast.info("Пожалуйста, войдите в аккаунт или зарегистрируйтесь.", {
+                action: {
+                    label: "Войти",
+                    onClick: () => navigate('/login')
+                },
+            });
+            return;
+        }
+
         if (!product || !selectedVariant) {
             toast.error("Пожалуйста, выберите цвет и размер.");
             return;
@@ -155,7 +168,7 @@ export default function ProductPage() {
 
         if (existingItemIndex !== -1) {
             cart[existingItemIndex].quantity += 1;
-            cart[existingItemIndex].price = priceForCart; // Обновляем цену на случай, если она изменилась
+            cart[existingItemIndex].price = priceForCart;
         } else {
             const newItem: CartItem = {
                 id: selectedVariant.id,
@@ -175,6 +188,14 @@ export default function ProductPage() {
         localStorage.setItem('cart', JSON.stringify(cart));
         toast.success("Товар добавлен в корзину!");
         window.dispatchEvent(new CustomEvent('cartChange'));
+    };
+
+    const handleQuickOrder = () => {
+        if (!selectedVariant) {
+            toast.error("Пожалуйста, выберите цвет и размер.");
+            return;
+        }
+        setIsQuickOrderModalOpen(true);
     };
 
     if (loading) {
@@ -202,7 +223,7 @@ export default function ProductPage() {
 
     let yourPrice = selectedVariant ? selectedVariant.purchase_price : 0;
     if (selectedVariant && !hasDiscount && userSale) {
-        yourPrice = selectedVariant.purchase_price * (1 - user.sale / 100);
+        yourPrice = selectedVariant.purchase_price * (1 - (user.sale ?? 0) / 100);
     }
 
     return (
@@ -240,14 +261,12 @@ export default function ProductPage() {
                         {selectedVariant && (
                              <div className="my-5 space-y-2">
                                 {hasDiscount ? (
-                                    // Сценарий 1: Есть скидка на товар
                                     <>
                                         <p className="text-xl text-gray-500 line-through">Цена: {formatPrice(selectedVariant.purchase_price)}</p>
                                         <p className="text-2xl font-bold text-red-600">Новая цена: {formatPrice(selectedVariant.sale_price)}</p>
                                         <p className="text-red-600 font-semibold">Скидка: {formatDiscount(selectedVariant.discount)}</p>
                                     </>
                                 ) : (
-                                    // Сценарий 2: Нет скидки на товар (может быть персональная)
                                     <>
                                         <p className={`text-xl ${userSale ? 'text-gray-500 line-through' : 'text-gray-700'}`}>Цена: {formatPrice(selectedVariant.purchase_price)}</p>
                                         {userSale && (
@@ -290,7 +309,7 @@ export default function ProductPage() {
 
                         <div className="flex flex-col sm:flex-row gap-3 mt-8">
                             <Button size="lg" className="flex-1 bg-gray-800 hover:bg-gray-900" onClick={handleAddToCart} disabled={!inStock}>Купить</Button>
-                            <Button size="lg" variant="outline" className="flex-1">Заказать быстро</Button>
+                            <Button size="lg" variant="outline" className="flex-1" onClick={handleQuickOrder} disabled={!inStock}>Заказать быстро</Button>
                         </div>
                         
                         <div className="mt-8 text-sm text-gray-600 space-y-1">
@@ -300,6 +319,12 @@ export default function ProductPage() {
                     </div>
                 </div>
             </div>
+            <QuickOrderModal 
+                isOpen={isQuickOrderModalOpen}
+                onClose={() => setIsQuickOrderModalOpen(false)}
+                product={product}
+                selectedVariant={selectedVariant}
+            />
         </div>
     );
 }
