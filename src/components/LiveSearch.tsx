@@ -1,16 +1,16 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabaseApi } from '@/lib/supabase-api';
+import { Search } from 'lucide-react';
 
 const LiveSearch = () => {
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<any[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Закрытие dropdown при клике вне его области
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -24,18 +24,16 @@ const LiveSearch = () => {
         };
     }, []);
 
-    // Добавляем debounce для ограничения частоты запросов
-    const debounce = (func, delay) => {
-        let timeoutId;
-        return (...args) => {
+    const debounce = (func: (...args: any[]) => void, delay: number) => {
+        let timeoutId: NodeJS.Timeout;
+        return (...args: any[]) => {
             clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => func.apply(null, args), delay);
+            timeoutId = setTimeout(() => func(...args), delay);
         };
     };
 
-    // Поиск по API с debounce
-    const handleChange = useCallback(
-        debounce(async (value) => {
+    const performSearch = useCallback(
+        debounce(async (value: string) => {
             if (value.length < 2) {
                 setResults([]);
                 setIsOpen(false);
@@ -44,10 +42,9 @@ const LiveSearch = () => {
             
             setIsLoading(true);
             try {
-                // Используем Supabase API
                 const data = await supabaseApi.searchProducts(value);
-                setResults(data);
-                setIsOpen(data.length > 0);
+                setResults(data || []);
+                setIsOpen(data && data.length > 0);
             } catch (error) {
                 console.error('Search error:', error);
                 setResults([]);
@@ -59,78 +56,77 @@ const LiveSearch = () => {
         []
     );
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setQuery(value);
-        handleChange(value);
+        performSearch(value);
     };
 
-    // Переход на страницу результатов поиска
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (query.length > 1) {
+        if (query.trim().length > 1) {
             setIsOpen(false);
-            navigate(`/search?article=${encodeURIComponent(query)}`);
+            navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+            setQuery('');
         }
     };
 
-    // Переход на страницу товара
-    const handleResultClick = (item: any) => {
-        // Using the new URL format with gender and article
-        navigate(`/gender/${item.gender}/${encodeURIComponent(item.article)}`);
-        // Очищаем результаты поиска после перехода
+    const handleResultClick = () => {
         setQuery('');
         setResults([]);
         setIsOpen(false);
     };
+    
+    const generateProductUrl = (item: any) => {
+        const season = item.season ? encodeURIComponent(item.season) : 'all';
+        return `/gender/${item.gender}/season/${season}/category/${item.category_id}/${item.article}`;
+    };
 
     return (
-        <div ref={containerRef} className="relative flex flex-1 mx-8 items-center">
+        <div ref={containerRef} className="relative w-full">
             <form
-                className="relative flex flex-1 items-center"
-                onSubmit={handleSearch}
+                className="relative flex items-center"
+                onSubmit={handleSearchSubmit}
                 autoComplete="off"
             >
                 <input
                     type="text"
-                    className="border rounded-l px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-500 text-lg"
-                    placeholder="Поиск по артикулу или названию..."
+                    className="border rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-500 text-base"
+                    placeholder="Поиск по артикулу..."
                     value={query}
                     onChange={handleInputChange}
-                    style={{ minWidth: 0 }}
                 />
                 <button
                     type="submit"
-                    className="bg-green-600 text-white p-0 w-12 h-12 rounded-r flex items-center justify-center hover:bg-green-700"
+                    className="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-gray-400 hover:text-green-600"
                     disabled={query.length < 2}
-                    style={{ minWidth: '48px' }}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" fill="none" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" strokeWidth="2" />
-                    </svg>
+                    <Search className="w-5 h-5" />
                 </button>
             </form>
             {isOpen && (
-                <div
-                    className="absolute bg-white border rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto w-full"
-                    style={{ top: '100%', left: 0, right: 0, marginTop: '0.5rem' }}
-                >
+                <div className="absolute bg-white border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto w-full mt-1">
                     {isLoading ? (
-                        <div className="px-4 py-3 text-base">Загрузка...</div>
+                        <div className="px-4 py-3">Загрузка...</div>
                     ) : results.length > 0 ? (
-                        results.map((item: any) => (
-                            <div
-                                key={item.product_id || item.article}
-                                className="px-4 py-3 text-base hover:bg-green-50 cursor-pointer transition-all border-b last:border-b-0"
-                                onClick={() => handleResultClick(item)}
+                        results.map((item) => (
+                            <Link
+                                to={generateProductUrl(item)}
+                                key={item.article}
+                                className="block px-4 py-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                                onClick={handleResultClick}
                             >
-                                <div className="font-medium">{item.name}</div>
-                                <div className="text-sm text-gray-500">Артикул: {item.article}</div>
-                            </div>
+                                <div className="flex items-center gap-4">
+                                    <img src={`https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${item.image}`} alt={item.name} className="w-12 h-16 object-cover rounded-md bg-gray-200"/>
+                                    <div>
+                                        <div className="font-semibold">{item.name}</div>
+                                        <div className="text-sm text-gray-600">Артикул: {item.article}</div>
+                                    </div>
+                                </div>
+                            </Link>
                         ))
                     ) : (
-                        <div className="px-4 py-3 text-base text-gray-500">Ничего не найдено</div>
+                        <div className="px-4 py-3 text-gray-500">Ничего не найдено.</div>
                     )}
                 </div>
             )}

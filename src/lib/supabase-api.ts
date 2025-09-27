@@ -21,6 +21,7 @@ export const supabaseApi = {
         article,
         name,
         gender,
+        season, 
         category_id,
         image,
         categories(name)
@@ -38,6 +39,7 @@ export const supabaseApi = {
       article: item.article,
       name: item.name,
       gender: item.gender,
+      season: item.season, // Добавлено поле season
       category_id: item.category_id,
       category_name: (item.categories as any)?.name || '',
       image: item.image || null
