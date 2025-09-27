@@ -303,7 +303,7 @@ export default function ProductPage() {
                             <CarouselContent>
                                 {verifiedImages.map((src, index) => (
                                     <CarouselItem key={index} onClick={() => openFullscreenImage(src)}>
-                                        <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer">
+                                        <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer">
                                             <img 
                                                 src={src}
                                                 alt={`${product.name} - изображение ${index + 1}`}
