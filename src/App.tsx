@@ -6,7 +6,7 @@ import Index from './pages/Index';
 import NotFound from './pages/NotFound';
 import CategoryPage from './pages/CategoryPage';
 import ProductPage from './pages/ProductPage';
-import SearchPage from './pages/SearchPage'; // Corrected Import
+import SearchPage from './pages/SearchPage';
 import GenderSeasonPage from './pages/GenderSeasonPage';
 import RegistrationPage from './pages/RegistrationPage';
 import LoginPage from './pages/LoginPage';
@@ -14,6 +14,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
+import AdminPage from './pages/AdminPage'; // Import AdminPage
 import React from 'react';
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/order-success" element={<OrderSuccessPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/admin" element={<AdminPage />} /> {/* Add Admin Route */}
 
             {/* Legacy URL structure support */}
             <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />

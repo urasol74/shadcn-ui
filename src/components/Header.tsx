@@ -3,7 +3,7 @@ import LiveSearch from './LiveSearch';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Heart, ShoppingCart, LogOut, LogIn, UserPlus, Search } from 'lucide-react';
+import { Heart, ShoppingCart, LogOut, LogIn, UserPlus, Search, UserCog } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +20,16 @@ const Header = () => {
   const navigate = useNavigate();
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Точная проверка на администратора по полю tel
+    if (user && user.tel === '380994580337') {
+        setIsAdmin(true);
+    } else {
+        setIsAdmin(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     const updateFavoritesCount = () => {
@@ -130,24 +140,40 @@ const Header = () => {
 
               {user ? (
                 <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                       <Button asChild variant="ghost" size="icon" className="relative">
-                         <Link to="/cart">
-                          <ShoppingCart className="h-5 w-5" />
-                          {cartCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
-                              {cartCount}
-                            </span>
-                          )}
-                          <span className="sr-only">Корзина</span>
-                        </Link>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Корзина</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  {isAdmin ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Button asChild variant="ghost" size="icon">
+                           <Link to="/admin">
+                            <UserCog className="h-5 w-5" />
+                             <span className="sr-only">Админ-панель</span>
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Админ-панель</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Button asChild variant="ghost" size="icon" className="relative">
+                           <Link to="/cart">
+                            <ShoppingCart className="h-5 w-5" />
+                            {cartCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                                {cartCount}
+                              </span>
+                            )}
+                            <span className="sr-only">Корзина</span>
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Корзина</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
 
                   <Tooltip>
                     <TooltipTrigger asChild>
