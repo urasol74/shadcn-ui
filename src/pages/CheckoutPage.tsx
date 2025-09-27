@@ -109,6 +109,7 @@ export default function CheckoutPage() {
                     stock: item.quantity,
                     discount: hasDiscount ? variantDetail.discount : 0,
                     sale: !hasDiscount ? (user.sale || 0) : 0,
+                    purchase_date: new Date().toISOString(), // Добавлено поле с датой
                 };
             });
 
@@ -133,7 +134,7 @@ export default function CheckoutPage() {
                     messageLines.push(`- ${item.name} (${item.article})`);
                     messageLines.push(`  Цвет: ${item.color}, Размер: ${item.size}`);
                     messageLines.push(`  Кол-во: ${item.quantity} шт. x ${formatPrice(item.price)}`);
-                    messageLines.push(``); // Add a blank line for spacing
+                    messageLines.push(``);
                 });
 
                 messageLines.push(`--------------------------------`);
