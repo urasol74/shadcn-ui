@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,21 +11,37 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { formatPrice } from '@/lib/priceUtils';
 
 interface QuickOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: { name: string; article: string; image: string } | null;
-  selectedVariant: { color: string; size: string } | null;
+  selectedVariant: {
+    color: string;
+    size: string;
+    purchase_price: number;
+    sale_price: number;
+    discount: number;
+  } | null;
+  user: { sale: number; name: string; tel: string } | null;
 }
 
 const BOT_TOKEN = '7223314836:AAEUHr6yHUM-RnNn3tTN9PpuFeRc9I10VH0';
 const CHAT_ID = '1023307031';
 
-export function QuickOrderModal({ isOpen, onClose, product, selectedVariant }: QuickOrderModalProps) {
+export function QuickOrderModal({ isOpen, onClose, product, selectedVariant, user }: QuickOrderModalProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setPhone(user.tel || '');
+    }
+  }, [user]);
 
   const handleSubmit = async () => {
     if (!name || !phone) {
@@ -40,6 +55,22 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant }: Q
 
     setIsSending(true);
 
+    // --- Логика определения цены ---
+    let price = 0;
+    if (selectedVariant.discount > 0) {
+      price = selectedVariant.sale_price;
+    } else {
+      if (user) {
+        // Расчет "Вашей цены" для авторизованного пользователя
+        const userDiscount = user.sale ?? 0;
+        price = selectedVariant.purchase_price * (1 - userDiscount / 100);
+      } else {
+        // Цена для неавторизованного пользователя
+        price = selectedVariant.purchase_price;
+      }
+    }
+    // --------------------------------
+
     const message = `
 *⚡️ Быстрый заказ!*
 
@@ -51,6 +82,7 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant }: Q
 Артикул: ${product.article}
 Цвет: ${selectedVariant.color}
 Размер: ${selectedVariant.size}
+*Цена: ${formatPrice(price)}*
     `;
 
     try {
@@ -70,8 +102,10 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant }: Q
 
       if (result.ok) {
         toast.success('Ваш заказ успешно отправлен! Мы скоро с вами свяжемся.');
-        setName('');
-        setPhone('');
+        if (!user) { // Очищаем поля только если пользователь не авторизован
+          setName('');
+          setPhone('');
+        }
         onClose();
       } else {
         throw new Error(result.description);
@@ -113,7 +147,7 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant }: Q
             </div>
             <div className="grid w-full max-w-sm items-center gap-1.5">
               <Label htmlFor="phone">Телефон</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 (999) 999-99-99" />
+              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+38 (099) 999-99-99" />
             </div>
           </div>
         </div>

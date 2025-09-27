@@ -44,11 +44,10 @@ export default function CartPage() {
     }, []);
 
     const updateCart = (newCart: CartItem[]) => {
-        // Фильтруем пустые элементы на всякий случай
         const filteredCart = newCart.filter(item => item.quantity > 0);
         localStorage.setItem('cart', JSON.stringify(filteredCart));
         setCartItems(filteredCart);
-        window.dispatchEvent(new CustomEvent('cartChange')); // Уведомить Header
+        window.dispatchEvent(new CustomEvent('cartChange'));
     };
 
     const handleQuantityChange = (variantId: number, newQuantity: number) => {
@@ -101,14 +100,18 @@ export default function CartPage() {
                     {cartItems.map((item) => (
                         <Card key={item.id} className="overflow-hidden">
                             <CardContent className="flex items-start md:items-center gap-4 p-4">
-                                <img 
-                                    src={item.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${item.image}` : "/placeholder.webp"}
-                                    alt={item.name} 
-                                    className="h-28 w-24 rounded-md object-cover bg-gray-100"
-                                />
+                                <Link to={`/product/${item.productId}`}>
+                                    <img 
+                                        src={item.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${item.image}` : "/placeholder.webp"}
+                                        alt={item.name} 
+                                        className="h-28 w-24 rounded-md object-cover bg-gray-100 transition-opacity hover:opacity-80"
+                                    />
+                                </Link>
                                 <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
                                     <div className="md:col-span-2">
-                                        <h3 className="font-semibold text-base leading-tight">{item.name}</h3>
+                                        <Link to={`/product/${item.productId}`} className="hover:underline">
+                                            <h3 className="font-semibold text-base leading-tight">{item.name}</h3>
+                                        </Link>
                                         <p className="text-sm text-gray-500">Артикул: {item.article}</p>
                                         <p className="text-sm text-gray-500">Цвет: {item.color}</p>
                                         <p className="text-sm text-gray-500">Размер: {item.size}</p>

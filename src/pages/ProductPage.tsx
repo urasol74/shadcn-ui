@@ -415,6 +415,7 @@ export default function ProductPage() {
                 onClose={() => setIsQuickOrderModalOpen(false)}
                 product={product}
                 selectedVariant={selectedVariant}
+                user={user}
             />
             <FullscreenImageModal
                 isOpen={isFullscreenImageOpen}
