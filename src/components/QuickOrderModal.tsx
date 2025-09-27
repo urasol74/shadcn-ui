@@ -81,21 +81,13 @@ export function QuickOrderModal({ isOpen, onClose, product, selectedVariant, use
         price: price,
       };
 
-      const { data: insertedData, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from('quick_order')
-        .insert(quickOrderData)
-        .select();
+        .insert(quickOrderData);
 
       if (insertError) {
         throw insertError;
       }
-
-      // Улучшенный вывод в консоль для отладки
-      console.log('==============================');
-      console.log('🚀 SUPABASE QUICK ORDER DEBUG 🚀');
-      console.log('Data SENT to database:', quickOrderData);
-      console.log('Data RETURNED from database:', insertedData);
-      console.log('==============================');
 
       const message = `
 *⚡️ Быстрый заказ!* (Сохранен в БД)
