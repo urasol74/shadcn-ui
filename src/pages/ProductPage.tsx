@@ -16,6 +16,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { FullscreenImageModal } from '@/components/ui/FullscreenImageModal';
 
 interface Variant {
     id: number;
@@ -64,6 +65,8 @@ export default function ProductPage() {
     const [variantsByColor, setVariantsByColor] = useState<Record<string, Variant[]>>({});
     const [isFavorite, setIsFavorite] = useState(false);
     const [isQuickOrderModalOpen, setIsQuickOrderModalOpen] = useState(false);
+    const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
+    const [fullscreenImageUrl, setFullscreenImageUrl] = useState('');
     
     const [api, setApi] = useState<CarouselApi>()
     const [current, setCurrent] = useState(0)
@@ -257,6 +260,11 @@ export default function ProductPage() {
         setIsQuickOrderModalOpen(true);
     };
 
+    const openFullscreenImage = (imageUrl: string) => {
+        setFullscreenImageUrl(imageUrl);
+        setIsFullscreenImageOpen(true);
+    };
+
     if (loading) {
         return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Загрузка товара...</div>;
     }
@@ -294,8 +302,8 @@ export default function ProductPage() {
                          <Carousel className="w-full max-w-xl mx-auto" setApi={setApi}>
                             <CarouselContent>
                                 {verifiedImages.map((src, index) => (
-                                    <CarouselItem key={index}>
-                                        <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                    <CarouselItem key={index} onClick={() => openFullscreenImage(src)}>
+                                        <div className="aspect-square w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer">
                                             <img 
                                                 src={src}
                                                 alt={`${product.name} - изображение ${index + 1}`}
@@ -407,6 +415,11 @@ export default function ProductPage() {
                 onClose={() => setIsQuickOrderModalOpen(false)}
                 product={product}
                 selectedVariant={selectedVariant}
+            />
+            <FullscreenImageModal
+                isOpen={isFullscreenImageOpen}
+                onClose={() => setIsFullscreenImageOpen(false)}
+                imageUrl={fullscreenImageUrl}
             />
         </div>
     );
