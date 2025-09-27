@@ -98,9 +98,14 @@ const AdminPage = () => {
                         <h2 className="text-xl font-bold mb-4">Меню</h2>
                         <nav>
                             <ul>
-                                <li>
+                                <li className="mb-2">
                                     <Link to="/admin/user" className="block py-2 px-3 bg-green-100 text-green-800 rounded font-semibold">
                                         Клиенты
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/admin/quick-orders" className="block py-2 px-3 rounded hover:bg-gray-100">
+                                        Быстрые заказы
                                     </Link>
                                 </li>
                             </ul>
