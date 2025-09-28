@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useMemo } from 'react';
 import Header from '@/components/Header';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -8,71 +8,77 @@ interface Variant {
   id: number; product_id: number; size: string; color: string; barcode: string; stock: number;
   purchase_price: number; sale_price: number; new_price: number; total_price: number; discount: number;
 }
-interface Category { id: number; name: string; name_rus: string; }
+interface Category { id: number; name: string; }
 interface Product {
   id: number; article: string; name: string; category_id: number; brand: string; season: string;
   gender: string; image: string; variants: Variant[];
-  category_name?: string; // Поле для названия категории, добавляется программно
+  category_name?: string; // Название категории, добавляется программно
 }
 
 const AdminProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Состояние для поисковых запросов
+  const [filters, setFilters] = useState({
+    article: '',
+    category_name: '',
+    gender: '',
+    season: ''
+  });
 
   useEffect(() => {
     const fetchProductsAndCategories = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        // 1. Загружаем все категории, используя только поле 'name'
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('id, name');
-
+        const { data: categoriesData, error: categoriesError } = await supabase.from('categories').select('id, name');
         if (categoriesError) throw categoriesError;
-
-        // Создаем карту: { category_id: category_name }
         const categoriesMap = new Map(categoriesData.map(cat => [cat.id, cat.name]));
 
-        // 2. Загружаем все товары с их вариантами
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select(`*, variants(*)`)
-          .order('article', { ascending: true });
-
+        const { data: productsData, error: productsError } = await supabase.from('products').select(`*, variants(*)`).order('article', { ascending: true });
         if (productsError) throw productsError;
 
-        // 3. Объединяем данные: добавляем имя категории к каждому продукту
         const combinedData = productsData.map(product => ({
           ...product,
-          // Используем карту для поиска названия по ID. Если не найдено, показываем 'N/A'
           category_name: categoriesMap.get(product.category_id) || 'N/A',
         }));
-
         setProducts(combinedData as Product[]);
-
       } catch (error: any) {
         console.error('Error fetching data:', error);
         setError(`Не удалось загрузить данные. Ошибка: ${error.message}`);
       }
-
       setLoading(false);
     };
-
     fetchProductsAndCategories();
   }, []);
+
+  // Обработчик для обновления фильтров
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Фильтрация товаров на стороне клиента
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const articleMatch = product.article.toLowerCase().includes(filters.article.toLowerCase());
+      const categoryMatch = (product.category_name || '').toLowerCase().includes(filters.category_name.toLowerCase());
+      const genderMatch = product.gender.toLowerCase().includes(filters.gender.toLowerCase());
+      const seasonMatch = product.season.toLowerCase().includes(filters.season.toLowerCase());
+      return articleMatch && categoryMatch && genderMatch && seasonMatch;
+    });
+  }, [products, filters]);
 
   const renderContent = () => {
     if (loading) return <p>Загрузка...</p>;
     if (error) return <p className="text-red-500">{error}</p>;
-    if (!products || products.length === 0) return <p>В базе данных нет товаров.</p>;
-
+    
     return (
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white text-sm text-left border-collapse">
-          <thead className="bg-gray-100 sticky top-0">
+          <thead className="bg-gray-100 sticky top-0 z-10">
+            {/* Заголовки колонок */}
             <tr>
               <th className="py-2 px-3 border font-semibold">Артикул</th>
               <th className="py-2 px-3 border font-semibold">Категория</th>
@@ -85,36 +91,48 @@ const AdminProductsPage = () => {
               <th className="py-2 px-3 border font-semibold">Остаток</th>
               <th className="py-2 px-3 border font-semibold">Штрихкод</th>
             </tr>
+            {/* Поля для фильтрации */}
+            <tr>
+              <td className="p-1 border bg-gray-100"><input type="text" placeholder="Поиск..." name="article" value={filters.article} onChange={handleFilterChange} className="w-full px-2 py-1 border rounded-md shadow-sm" /></td>
+              <td className="p-1 border bg-gray-100"><input type="text" placeholder="Поиск..." name="category_name" value={filters.category_name} onChange={handleFilterChange} className="w-full px-2 py-1 border rounded-md shadow-sm" /></td>
+              <td className="p-1 border bg-gray-100"><input type="text" placeholder="Поиск..." name="gender" value={filters.gender} onChange={handleFilterChange} className="w-full px-2 py-1 border rounded-md shadow-sm" /></td>
+              <td className="p-1 border bg-gray-100"><input type="text" placeholder="Поиск..." name="season" value={filters.season} onChange={handleFilterChange} className="w-full px-2 py-1 border rounded-md shadow-sm" /></td>
+              <td colSpan={6} className="p-1 border bg-gray-100"></td>
+            </tr>
           </thead>
           <tbody>
-            {products.map((product) => (
-              <Fragment key={product.id}>
-                <tr className="bg-gray-200 font-semibold">
-                  <td className="py-2 px-3 border">{product.article}</td>
-                  <td className="py-2 px-3 border">{product.category_name}</td>
-                  <td className="py-2 px-3 border">{product.gender}</td>
-                  <td className="py-2 px-3 border">{product.season}</td>
-                  <td className="py-2 px-3 border" colSpan={6}></td>
-                </tr>
-                {product.variants && product.variants.length > 0 ? (
-                  product.variants.map((variant) => (
-                    <tr key={variant.id} className="hover:bg-gray-50">
-                      <td className="py-1 px-3 border" colSpan={4}></td>
-                      <td className="py-1 px-3 border">{variant.color}</td>
-                      <td className="py-1 px-3 border">{variant.size}</td>
-                      <td className="py-1 px-3 border">{variant.sale_price}</td>
-                      <td className="py-1 px-3 border">{variant.purchase_price}</td>
-                      <td className="py-1 px-3 border">{variant.stock}</td>
-                      <td className="py-1 px-3 border">{variant.barcode}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="py-1 px-3 border text-center text-gray-500" colSpan={10}>Нет вариантов</td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
+            {filteredProducts.length === 0 && !loading ? (
+                <tr><td colSpan={10} className="text-center py-4">Товары не найдены</td></tr>
+            ) : (
+                filteredProducts.map((product) => (
+                    <Fragment key={product.id}>
+                        <tr className="bg-gray-200 font-semibold">
+                        <td className="py-2 px-3 border">{product.article}</td>
+                        <td className="py-2 px-3 border">{product.category_name}</td>
+                        <td className="py-2 px-3 border">{product.gender}</td>
+                        <td className="py-2 px-3 border">{product.season}</td>
+                        <td className="py-2 px-3 border" colSpan={6}></td>
+                        </tr>
+                        {product.variants && product.variants.length > 0 ? (
+                        product.variants.map((variant) => (
+                            <tr key={variant.id} className="hover:bg-gray-50">
+                            <td className="py-1 px-3 border" colSpan={4}></td>
+                            <td className="py-1 px-3 border">{variant.color}</td>
+                            <td className="py-1 px-3 border">{variant.size}</td>
+                            <td className="py-1 px-3 border">{variant.sale_price}</td>
+                            <td className="py-1 px-3 border">{variant.purchase_price}</td>
+                            <td className="py-1 px-3 border">{variant.stock}</td>
+                            <td className="py-1 px-3 border">{variant.barcode}</td>
+                            </tr>
+                        ))
+                        ) : (
+                        <tr>
+                            <td className="py-1 px-3 border text-center text-gray-500" colSpan={10}>Нет вариантов</td>
+                        </tr>
+                        )}
+                    </Fragment>
+                ))
+            )}
           </tbody>
         </table>
       </div>
