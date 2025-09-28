@@ -15,6 +15,7 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import AdminPage from './pages/AdminPage';
+import AdminProductsPage from './pages/AdminProductsPage';
 import UserOrdersPage from './pages/UserOrdersPage';
 import QuickOrdersAdminPage from './pages/QuickOrdersAdminPage'; // Импорт новой страницы
 import React from 'react';
@@ -40,6 +41,7 @@ const App = () => (
             {/* Admin Routes */}
             <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
             <Route path="/admin/user" element={<AdminPage />} />
+            <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/user/:id" element={<UserOrdersPage />} />
             <Route path="/admin/quick-orders" element={<QuickOrdersAdminPage />} />
 

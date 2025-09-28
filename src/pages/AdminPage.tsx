@@ -103,6 +103,11 @@ const AdminPage = () => {
                                         Клиенты
                                     </Link>
                                 </li>
+                                <li className="mb-2">
+                                    <Link to="/admin/products" className="block py-2 px-3 rounded hover:bg-gray-100">
+                                        Товары
+                                    </Link>
+                                </li>
                                 <li>
                                     <Link to="/admin/quick-orders" className="block py-2 px-3 rounded hover:bg-gray-100">
                                         Быстрые заказы
