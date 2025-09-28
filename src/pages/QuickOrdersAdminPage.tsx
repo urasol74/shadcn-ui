@@ -132,9 +132,14 @@ const QuickOrdersAdminPage = () => {
                                         Клиенты
                                     </Link>
                                 </li>
-                                <li>
+                                <li className="mb-2">
                                     <Link to="/admin/quick-orders" className="block py-2 px-3 bg-green-100 text-green-800 rounded font-semibold">
                                         Быстрые заказы
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/admin/products" className="block py-2 px-3 rounded hover:bg-gray-100">
+                                        Товары
                                     </Link>
                                 </li>
                             </ul>

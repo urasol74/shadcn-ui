@@ -146,7 +146,11 @@ const AdminProductsPage = () => {
         <aside className="w-1/5 flex-shrink-0">
           <div className="bg-white p-4 rounded-lg shadow-md">
             <h2 className="text-xl font-bold mb-4">Меню</h2>
-            <nav><ul><li className="mb-2"><Link to="/admin/user" className="block py-2 px-3 rounded hover:bg-gray-100">Клиенты</Link></li><li className="mb-2"><Link to="/admin/products" className="block py-2 px-3 bg-green-100 text-green-800 rounded font-semibold">Товары</Link></li><li><Link to="/admin/quick-orders" className="block py-2 px-3 rounded hover:bg-gray-100">Быстрые заказы</Link></li></ul></nav>
+            <nav><ul>
+              <li className="mb-2"><Link to="/admin/user" className="block py-2 px-3 rounded hover:bg-gray-100">Клиенты</Link></li>
+              <li className="mb-2"><Link to="/admin/quick-orders" className="block py-2 px-3 rounded hover:bg-gray-100">Быстрые заказы</Link></li>
+              <li><Link to="/admin/products" className="block py-2 px-3 bg-green-100 text-green-800 rounded font-semibold">Товары</Link></li>
+              </ul></nav>
           </div>
         </aside>
         <main className="w-4/5">
