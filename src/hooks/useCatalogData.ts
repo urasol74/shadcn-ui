@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { supabaseApi } from '@/lib/supabase-api';
 
 interface Category {
     id: number;
@@ -10,81 +9,78 @@ interface Category {
 export const useCatalogData = (gender: string | undefined, decodedSeason: string | null, isProduct: boolean | null) => {
     const [seasons, setSeasons] = useState<string[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Начинаем с состояния загрузки
 
-    // Загрузка сезонов
     useEffect(() => {
-        if (!gender || isProduct) return;
-        const loadSeasons = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('products')
-                    .select('season')
-                    .eq('gender', gender)
-                    .not('season', 'is', null)
-                    .not('season', 'eq', '');
-                if (error) throw error;
-                const uniqueSeasons = [...new Set(data?.map(item => item.season).filter(Boolean))] as string[];
-                setSeasons(uniqueSeasons);
-            } catch (error) {
-                console.error('Seasons loading failed:', error);
-                setSeasons([]);
-            }
-        };
-        loadSeasons();
-    }, [gender, isProduct]);
+        if (!gender || isProduct) {
+            setLoading(false);
+            return;
+        }
 
-    // Загрузка категорий
-    useEffect(() => {
-        if (!gender || isProduct) return;
-        
-        const loadCategories = async () => {
+        const loadCatalogData = async () => {
             setLoading(true);
             try {
-                let query = supabase
-                    .from('products')
-                    // Выбираем только данные по категории, так как это все, что нам нужно
-                    .select('categories!inner(id, name), variants!inner(stock)') 
-                    .eq('gender', gender)
-                    .gt('variants.stock', 0); // Условие: хотя бы один вариант должен быть в наличии
+                // Запускаем загрузку сезонов и категорий параллельно для эффективности
+                const [seasonsPromise, categoriesPromise] = [
+                    supabase
+                        .from('products')
+                        .select('season')
+                        .eq('gender', gender as string)
+                        .not('season', 'is', null)
+                        .not('season', 'eq', ''),
+                    
+                    (() => {
+                        let query = supabase
+                            .from('products')
+                            .select('categories!inner(id, name), variants!inner(stock)')
+                            .eq('gender', gender as string)
+                            .gt('variants.stock', 0);
 
-                // Если выбран конкретный сезон, добавляем его в фильтр
-                if (decodedSeason && decodedSeason !== 'all') {
-                    query = query.eq('season', decodedSeason);
-                }
+                        if (decodedSeason && decodedSeason !== 'all') {
+                            query = query.eq('season', decodedSeason);
+                        }
+                        return query;
+                    })()
+                ];
 
-                const { data, error } = await query;
+                const [seasonsResult, categoriesResult] = await Promise.all([seasonsPromise, categoriesPromise]);
 
-                if (error) {
-                    console.error('Error fetching products to determine categories:', error);
-                    throw error;
-                }
+                // Обрабатываем результат сезонов
+                if (seasonsResult.error) throw seasonsResult.error;
+                const uniqueSeasons = [...new Set(seasonsResult.data?.map(item => item.season).filter(Boolean) ?? [])] as string[];
+                setSeasons(uniqueSeasons);
 
-                // Из полученного списка товаров, у которых есть остатки,
-                // извлекаем их категории и убираем дубликаты.
+                // Обрабатываем результат категорий
+                if (categoriesResult.error) throw categoriesResult.error;
                 const uniqueCategoriesMap = new Map<number, Category>();
-                data.forEach(product => {
-                    const category = product.categories as Category;
-                    if (category && !uniqueCategoriesMap.has(category.id)) {
-                        uniqueCategoriesMap.set(category.id, category);
+                categoriesResult.data.forEach(product => {
+                    // ИСПРАВЛЕНИЕ: Добавляем более строгую проверку типа для TypeScript.
+                    // `!inner` join гарантирует, что `product.categories` - это объект,
+                    // но TypeScript этого не знает. Эта проверка делает код безопасным.
+                    const category = product.categories;
+                    if (category && typeof category === 'object' && 'id' in category && 'name' in category) {
+                        // Теперь, после проверки, приведение типа является безопасным.
+                        const typedCategory = category as Category;
+                        if (!uniqueCategoriesMap.has(typedCategory.id)) {
+                            uniqueCategoriesMap.set(typedCategory.id, typedCategory);
+                        }
                     }
                 });
-
                 const uniqueCategories = Array.from(uniqueCategoriesMap.values());
-                
-                console.log('Отфильтрованные уникальные категории:', uniqueCategories);
                 setCategories(uniqueCategories);
 
             } catch (error) {
-                console.error('Categories loading failed:', error);
+                console.error('Ошибка загрузки данных каталога:', error);
+                setSeasons([]);
                 setCategories([]);
             } finally {
                 setLoading(false);
             }
         };
-        
-        loadCategories();
+
+        loadCatalogData();
     }, [gender, decodedSeason, isProduct]);
 
-    return { seasons, categories, loading, setLoading };
+    // Возвращаем данные и единый статус загрузки. `setLoading` больше не возвращается.
+    return { seasons, categories, loading };
 };

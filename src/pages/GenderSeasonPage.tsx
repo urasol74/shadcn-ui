@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,53 +11,53 @@ import { formatPrice, formatDiscount } from '@/lib/priceUtils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from 'lucide-react';
 
+interface Category {
+    id: number;
+    name: string;
+}
+
 export default function GenderSeasonPage() {
     const { season, gender, categoryId } = useParams();
     const navigate = useNavigate();
-    const location = useLocation();
 
     const decodedSeason = season ? decodeURIComponent(season) : null;
     
+    // 1. Разделяем состояния загрузки
     const { isProduct, productData } = useIsProduct(decodedSeason, categoryId, []);
-    const { seasons, categories, loading, setLoading } = useCatalogData(gender, decodedSeason, isProduct);
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const { seasons, categories, loading: catalogLoading } = useCatalogData(gender, decodedSeason, isProduct);
     const [products, setProducts] = useState<any[]>([]);
+    const [productsLoading, setProductsLoading] = useState(true);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    
+    const selectedCategory = categoryId || null;
 
+    // Эффект для проверки существования категории при смене сезона
     useEffect(() => {
-        if (categoryId) {
-            setSelectedCategory(categoryId);
-        } else {
-            setSelectedCategory(null);
-        }
-    }, [categoryId]);
-
-    // НОВАЯ ЛОГИКА: Проверка и перенаправление при смене сезона
-    useEffect(() => {
-        // Запускаем проверку только после загрузки данных и если в URL есть категория
-        if (!loading && categoryId) {
-            // Проверяем, существует ли текущая категория в новом списке категорий для сезона
+        // Запускаем проверку только после загрузки каталога и если категория выбрана
+        if (!catalogLoading && categoryId && categories.length > 0) {
             const categoryExistsInNewSeason = categories.some(cat => String(cat.id) === String(categoryId));
 
-            // Если категория НЕ существует в новом сезоне...
             if (!categoryExistsInNewSeason) {
-                // ...перенаправляем пользователя на страницу "все категории" для текущего сезона.
                 const targetPath = (decodedSeason && decodedSeason !== 'all')
                     ? `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}`
                     : `/gender/${gender}/season/all`;
-                
-                console.log(`Категория ID ${categoryId} не найдена в сезоне "${decodedSeason}". Перенаправление на ${targetPath}`);
-                navigate(targetPath, { replace: true }); // replace: true чтобы не создавать лишней записи в истории браузера
+                navigate(targetPath, { replace: true });
             }
         }
-    }, [categories, categoryId, loading, navigate, gender, decodedSeason]);
+    }, [categories, categoryId, catalogLoading, navigate, gender, decodedSeason]);
 
-
+    // 2. Оптимизированный эффект для загрузки ТОВАРОВ
     useEffect(() => {
-        if (!gender || isProduct === true) return;
+        // Не запускаем, если мы на странице товара или нет нужных данных
+        if (isProduct === true || !gender) {
+            setProductsLoading(false);
+            return;
+        }
+        // Не запускаем, пока определяются данные по каталогу
+        if (isProduct === null) return;
         
         const loadProducts = async () => {
-            setLoading(true);
+            setProductsLoading(true);
             try {
                 let query = supabase
                     .from('products')
@@ -69,7 +69,7 @@ export default function GenderSeasonPage() {
                     query = query.eq('category_id', selectedCategory);
                 }
 
-                if (decodedSeason && isProduct === false && decodedSeason !== 'all') {
+                if (decodedSeason && decodedSeason !== 'all') {
                     query = query.eq('season', decodedSeason);
                 }
 
@@ -111,14 +111,13 @@ export default function GenderSeasonPage() {
             } catch (error) {
                 console.error('Products loading failed:', error);
             } finally {
-                setLoading(false);
+                setProductsLoading(false);
             }
         };
         
-        if (isProduct !== null) {
-            loadProducts();
-        }
-    }, [decodedSeason, gender, selectedCategory, isProduct, categories, setLoading]);
+        loadProducts();
+    // 3. Убраны лишние зависимости (categories, setLoading). Эффект реагирует только на смену фильтров.
+    }, [decodedSeason, gender, selectedCategory, isProduct]);
 
     if (isProduct === null && (decodedSeason || categoryId)) {
         return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Проверка...</div>;
@@ -127,6 +126,8 @@ export default function GenderSeasonPage() {
     if (isProduct === true && productData) {
         return <ProductViewInline productData={productData} gender={gender} />;
     }
+    
+    const isLoading = catalogLoading || productsLoading;
 
     const getGenderTitle = (g: string) => {
         const titles: { [key: string]: string } = {
@@ -169,8 +170,8 @@ export default function GenderSeasonPage() {
                 <h3 className="font-semibold mb-2">Категории</h3>
                 <div className="flex flex-col gap-2 items-start">
                     <Link to={getAllCategoriesLink()} className={`w-full text-left px-3 py-1 rounded-md text-sm ${!selectedCategory ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>Все категории</Link>
-                    {categories.map((category) => (
-                        <Link key={category.id} to={getCategoryLink(category.id)} className={`w-full text-left px-3 py-1 rounded-md text-sm ${String(selectedCategory) === String(category.id) ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>{category.name}</Link>
+                    {categories.map((category: Category) => (
+                        <Link key={category.id} to={getCategoryLink(String(category.id))} className={`w-full text-left px-3 py-1 rounded-md text-sm ${String(selectedCategory) === String(category.id) ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>{category.name}</Link>
                     ))}
                 </div>
             </div>
@@ -194,7 +195,6 @@ export default function GenderSeasonPage() {
                         </div>
                     </div>
                     
-                    {/* Mobile filters */}
                     <div className="md:hidden mt-4">
                         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                             <SheetTrigger asChild>
@@ -211,7 +211,6 @@ export default function GenderSeasonPage() {
                         </Sheet>
                     </div>
                     
-                    {/* Desktop filters */}
                     <div className="hidden md:block mt-4">
                         <div className="mt-4 flex flex-wrap gap-2">
                             <Link to={`/gender/${gender}/season/all`} className={`px-3 py-1 rounded-full text-sm ${!decodedSeason || decodedSeason === 'all' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
@@ -227,8 +226,8 @@ export default function GenderSeasonPage() {
                             <Link to={getAllCategoriesLink()} className={`px-3 py-1 rounded-full text-sm ${!selectedCategory ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
                                 Все категории
                             </Link>
-                            {categories.map((category) => (
-                                <Link key={category.id} to={getCategoryLink(category.id)} className={`px-3 py-1 rounded-full text-sm ${String(selectedCategory) === String(category.id) ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                            {categories.map((category: Category) => (
+                                <Link key={category.id} to={getCategoryLink(String(category.id))} className={`px-3 py-1 rounded-full text-sm ${String(selectedCategory) === String(category.id) ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
                                     {category.name}
                                 </Link>
                             ))}
@@ -238,7 +237,7 @@ export default function GenderSeasonPage() {
             </div>
             
             <div className="container mx-auto px-4 py-8">
-                {loading ? (
+                {isLoading ? (
                     <div className="text-center py-8">Загрузка товаров...</div>
                 ) : products.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">Товары не найдены</div>

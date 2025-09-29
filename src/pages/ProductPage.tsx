@@ -4,7 +4,7 @@ import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { formatPrice, formatDiscount } from '@/lib/priceUtils';
-import { Heart } from 'lucide-react';
+import { Heart, ArrowLeft, Home } from 'lucide-react'; // Импортируем иконки
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
 import { QuickOrderModal } from '@/components/QuickOrderModal';
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/carousel";
 import { FullscreenImageModal } from '@/components/ui/FullscreenImageModal';
 
+// ... (интерфейсы остаются без изменений)
 interface Variant {
     id: number;
     size: string;
@@ -54,6 +55,7 @@ interface CartItem {
 }
 
 const SUPABASE_STORAGE_URL = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site';
+
 
 export default function ProductPage() {
     const { gender, season, article } = useParams();
@@ -297,6 +299,20 @@ export default function ProductPage() {
         <div className="min-h-screen bg-gray-50">
             <Header />
             <div className="container mx-auto px-4 py-8">
+                {/* ДОБАВЛЕННЫЕ КНОПКИ НАВИГАЦИИ */}
+                <div className="flex items-center gap-4 mb-6">
+                    <Button variant="outline" onClick={() => navigate(-1)}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Назад
+                    </Button>
+                    <Link to="/">
+                        <Button variant="outline">
+                            <Home className="h-4 w-4 mr-2" />
+                            На главную
+                        </Button>
+                    </Link>
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                     <div>
                          <Carousel className="w-full max-w-xl mx-auto" setApi={setApi}>
