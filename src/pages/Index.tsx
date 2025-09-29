@@ -1,139 +1,159 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
-import React from 'react';
-import { RecommendedProducts } from '@/components/RecommendedProducts';
+import { supabase } from '@/lib/supabase'; // Импортируем Supabase
+import { formatPrice } from '@/lib/priceUtils'; // Утилита для форматирования цены
 
-export default function HomePage() {
+const SUPABASE_STORAGE_URL = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site';
+
+// Определим интерфейс для наших товаров
+interface HighlightProduct {
+  id: number;
+  name: string;
+  article: string;
+  gender: string;
+  season: string;
+  image: string;
+  variants: {
+    purchase_price: number;
+  }[];
+}
+
+const BenettonHomePage = () => {
+  const brandColors = {
+    primaryGreen: '#00A03E',
+    darkGreen: '#004C22',
+    accentPink: '#E5004F',
+    textPrimary: '#1F1F1F',
+    backgroundLight: '#F5F5F5',
+  };
+
+  // Состояние для хранения загруженных товаров
+  const [highlightedProducts, setHighlightedProducts] = useState<HighlightProduct[]>([]);
+
+  useEffect(() => {
+    const fetchHighlightedProducts = async () => {
+      // 1. Загружаем все товары сезона "2025 осінь-зима" с их вариантами
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id, name, article, gender, season, image,
+          variants!inner(purchase_price)
+        `)
+        .eq('season', '2025 осінь-зима');
+
+      if (error) {
+        console.error("Ошибка при загрузке товаров для главной страницы:", error);
+        return;
+      }
+
+      // 2. Выбираем по одному уникальному товару для каждого пола
+      const productsByGender = new Map<string, HighlightProduct>();
+      for (const product of data) {
+        // Убедимся, что у товара есть варианты
+        if (product.variants && product.variants.length > 0) {
+            if (!productsByGender.has(product.gender)) {
+                productsByGender.set(product.gender, product as HighlightProduct);
+            }
+        }
+      }
+
+      // 3. Сохраняем результат в состояние
+      setHighlightedProducts(Array.from(productsByGender.values()));
+    };
+
+    fetchHighlightedProducts();
+  }, []); // Пустой массив зависимостей, чтобы запрос выполнился один раз
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-white font-sans text-gray-800">
       <Header />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-600 to-green-500 text-white py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-5xl font-bold mb-4">BENETTON ОДЕССА</h1>
-          <p className="text-xl mb-8">Официальный магазин модной одежды</p>
-          <p className="text-lg mb-8 opacity-90">Стильная одежда для всей семьи • Новая коллекция 2025</p>
-          
-          <div className="collections-buttons">
-            <Link to="/gender/чол/season/all" className="collection-link">
-              <Button size="lg" variant="secondary" className="btn-collection">
-                Мужская коллекция
-              </Button>
-            </Link>
-            <Link to="/gender/жiн/season/all" className="collection-link">
-              <Button size="lg" variant="secondary" className="btn-collection">
-                Женская коллекция
-              </Button>
-            </Link>
-            <Link to="/gender/хлопч/season/all" className="collection-link">
-              <Button size="lg" variant="secondary" className="btn-collection">
-                Мальчик
-              </Button>
-            </Link>
-            <Link to="/gender/дiвч/season/all" className="collection-link">
-              <Button size="lg" variant="secondary" className="btn-collection">
-                Девочка
-              </Button>
+      <main>
+        <section className="relative h-[70vh] w-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop')" }}>
+          <div className="absolute inset-0 bg-black bg-opacity-30"></div>
+          <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white">
+            <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">Color Your World</h1>
+            <p className="mb-8 max-w-2xl text-lg">Discover the new collection that celebrates diversity and vibrant self-expression.</p>
+            <Link to="/gender/жiн/season/all">
+                <button
+                className="transform rounded-full px-12 py-3 text-sm font-bold uppercase tracking-wider text-white transition-transform hover:scale-105"
+                style={{ backgroundColor: brandColors.primaryGreen }}
+                >
+                Shop Now
+                </button>
             </Link>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Рекламный блок */}
-      <section className="py-2">
-        <div className="w-full flex flex-col md:flex-row gap-4 items-stretch">
-          <div className="flex-1 h-40 md:h-64 bg-gray-100 relative overflow-hidden">
-            <img src="/static/image/left-pic.jpg" alt="Promo left" className="w-full h-full object-cover" loading="lazy" />
-            <div className="absolute inset-0 bg-black/25" />
-            <div className="relative z-10 p-4 text-white text-center">
-              <h3 className="text-lg md:text-xl font-semibold">Коллекция — слева</h3>
-              <p className="text-xs md:text-sm opacity-90">Здесь можно разместить рекламный текст или ссылку.</p>
+        {/* Featured Products Section - теперь с реальными данными */}
+        <section className="py-20" style={{ backgroundColor: brandColors.backgroundLight }}>
+          <div className="container mx-auto px-6">
+            <h2 className="mb-12 text-center text-3xl font-bold" style={{ color: brandColors.darkGreen }}>
+              This Week's Highlights
+            </h2>
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {highlightedProducts.map((product) => (
+                <Link 
+                    key={product.id} 
+                    to={`/gender/${product.gender}/season/${encodeURIComponent(product.season)}/product/${product.article}`}
+                    className="group block overflow-hidden rounded-lg bg-white shadow-lg"
+                >
+                    <div className="overflow-hidden aspect-w-1 aspect-h-1">
+                        <img 
+                            src={`${SUPABASE_STORAGE_URL}/${product.image}`}
+                            alt={product.name}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            onError={({ currentTarget }) => {
+                                currentTarget.onerror = null; // prevent looping
+                                currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
+                            }}
+                        />
+                    </div>
+                    <div className="p-6">
+                        <h3 className="text-lg font-semibold truncate" title={product.name}>{product.name}</h3>
+                        {/* Отображаем цену первого варианта */}
+                        <p className="mt-2 text-gray-500">{formatPrice(product.variants[0]?.purchase_price ?? 0)}</p>
+                    </div>
+                </Link>
+              ))}
             </div>
           </div>
-
-          <div className="flex-1 h-40 md:h-64 bg-gray-100 relative overflow-hidden">
-            <img src="/static/image/right-pic.jpg" alt="Promo right" className="w-full h-full object-cover" loading="lazy" />
-            <div className="absolute inset-0 bg-black/20" />
-            <div className="relative z-10 p-4 text-white text-center">
-              <h3 className="text-lg md:text-xl font-semibold">Коллекция — справа</h3>
-              <p className="text-xs md:text-sm opacity-90">Заглушка для баннера. Замените картинку в /static/image/</p>
+        </section>
+        
+        {/* About Section */}
+        <section className="container mx-auto grid grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2">
+            <div className="order-2 md:order-1">
+                <h2 className="mb-4 text-3xl font-bold" style={{ color: brandColors.darkGreen }}>A Story of Color</h2>
+                <p className="mb-6 text-gray-600">
+                    Since 1965, United Colors of Benetton has woven a narrative of style that transcends borders. Our identity is built on vibrant colors, authentic fashion, and a commitment to a better future.
+                </p>
+                <a href="#" className="font-bold uppercase tracking-wider" style={{ color: brandColors.primaryGreen }}>
+                    Learn More &rarr;
+                </a>
             </div>
-          </div>
-        </div>
-      </section>
+            <div className="order-1 h-80 w-full overflow-hidden rounded-lg shadow-xl md:order-2">
+                 <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" alt="Model posing in Benetton fashion" className="h-full w-full object-cover" />
+            </div>
+        </section>
 
-      <RecommendedProducts />
-
-      {/* Categories Grid */}
-      <section className="pt-4 pb-12 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-5">Категории товаров</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <Link to="/gender/чол/season/all" className="group">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground">Мужская одежда</p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/gender/жiн/season/all" className="group">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground">Женская одежда</p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/gender/хлопч/season/all" className="group">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground">Одежда на мальчика</p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/gender/дiвч/season/all" className="group">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground">Одежда на девочку</p>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-        </div>
-      </section>
+      </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-xl font-bold mb-4">BENETTON ОДЕССА</h3>
-              <p className="text-gray-300">Официальный магазин модной одежды в Одессе</p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Контакты</h4>
-              <p className="text-gray-300">г. Одесса</p>
-              <p className="text-gray-300">Украина</p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Коллекции</h4>
-              <div className="space-y-2 text-gray-300">
-                <Link to="/gender/чол/season/all" className="block hover:text-white">Мужская</Link>
-                <Link to="/gender/жiн/season/all" className="block hover:text-white">Женская</Link>
-                <Link to="/gender/хлопч/season/all" className="block hover:text-white">Детская</Link>
-              </div>
-            </div>
+      <footer className="py-16" style={{ backgroundColor: brandColors.darkGreen }}>
+        <div className="container mx-auto px-6 text-center text-white">
+          <p className="mb-4 text-xl font-bold">UNITED COLORS OF BENETTON.</p>
+          <div className="mb-6 flex justify-center space-x-6">
+            <a href="#" className="hover:underline">Instagram</a>
+            <a href="#" className="hover:underline">Facebook</a>
+            <a href="#" className="hover:underline">Twitter</a>
           </div>
-          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 Benetton Одесса. Все права защищены.</p>
-          </div>
+          <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} Benetton Group S.r.l. All rights reserved.</p>
         </div>
       </footer>
     </div>
   );
-}
+};
+
+export default BenettonHomePage;
