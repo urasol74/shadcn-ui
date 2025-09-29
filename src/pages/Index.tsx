@@ -96,10 +96,14 @@ const BenettonHomePage = () => {
         <section className="relative h-[70vh] w-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop')" }}>
           <div className="absolute inset-0 bg-black bg-opacity-30"></div>
           <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white">
-            <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
-              <span className="block">Benetton</span>
-              <span className="block">Раскрась свой мир</span>
-            </h1>
+          <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
+            <span className="block">Benetton</span>
+            <span className="block">
+            <span className="text-blue-600">Раскрась</span>{" "}
+            <span className="text-yellow-400">свой</span>{" "}
+            <span className="text-red-600">мир</span>
+            </span>
+          </h1>
             <p className="mb-8 max-w-2xl text-lg">Откройте новую коллекцию, с разнообразием и ярким самовыражением!</p>
             <Link to="/gender/жiн/season/all">
                 <button
