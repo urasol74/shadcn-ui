@@ -1,9 +1,8 @@
-<<<<<<< HEAD
-# Shadcn-UI Template Usage Instructions
+# Инструкция по использованию шаблона Shadcn-UI
 
-## technology stack
+## Стек технологий
 
-This project is built with:
+Этот проект создан с использованием:
 
 - Vite
 - TypeScript
@@ -11,55 +10,52 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-All shadcn/ui components have been downloaded under `@/components/ui`.
+Все компоненты shadcn/ui были загружены в директорию `@/components/ui`.
 
-## File Structure
+## Структура файлов
 
-- `index.html` - HTML entry point
-- `vite.config.ts` - Vite configuration file
-- `tailwind.config.js` - Tailwind CSS configuration file
-- `package.json` - NPM dependencies and scripts
-- `src/app.tsx` - Root component of the project
-- `src/main.tsx` - Project entry point
-- `src/index.css` - Existing CSS configuration
+- `index.html` - Точка входа HTML
+- `vite.config.ts` - Файл конфигурации Vite
+- `tailwind.config.js` - Файл конфигурации Tailwind CSS
+- `package.json` - Зависимости и скрипты NPM
+- `src/app.tsx` - Корневой компонент проекта
+- `src/main.tsx` - Точка входа проекта
+- `src/index.css` - Существующая конфигурация CSS
 
-## Components
+## Компоненты
 
-- All shadcn/ui components are pre-downloaded and available at `@/components/ui`
+- Все компоненты shadcn/ui предварительно загружены и доступны по пути `@/components/ui`.
 
-## Styling
+## Стилизация
 
-- Add global styles to `src/index.css` or create new CSS files as needed
-- Use Tailwind classes for styling components
+- Добавляйте глобальные стили в `src/index.css` или создавайте новые CSS-файлы по мере необходимости.
+- Используйте классы Tailwind для стилизации компонентов.
 
-## Development
+## Разработка
 
-- Import components from `@/components/ui` in your React components
-- Customize the UI by modifying the Tailwind configuration
+- Импортируйте компоненты из `@/components/ui` в ваши React-компоненты.
+- Настраивайте пользовательский интерфейс, изменяя конфигурацию Tailwind.
 
-## Note
+## Примечание
 
-The `@/` path alias points to the `src/` directory
+- Псевдоним пути `@/` указывает на директорию `src/`.
 
-# Commands
+# Команды
 
-**Install Dependencies**
+**Установка зависимостей**
 
 ```shell
 pnpm i
 ```
 
-**Start Preview**
+**Запуск сервера для разработки**
 
 ```shell
 pnpm run dev
 ```
 
-**To build**
+**Сборка проекта**
 
 ```shell
 pnpm run build
 ```
-=======
-# shadcn-ui
->>>>>>> a22aadcddf8fa7ea280415f4e77f7629d982ed64

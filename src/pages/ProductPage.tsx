@@ -1,10 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { formatPrice, formatDiscount } from '@/lib/priceUtils';
-import { Heart, ArrowLeft, Home } from 'lucide-react'; // Импортируем иконки
+import { Heart, ArrowLeft, Home } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from '@/hooks/useAuth';
 import { QuickOrderModal } from '@/components/QuickOrderModal';
@@ -70,44 +70,13 @@ export default function ProductPage() {
     const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState('');
     
+    // Состояние для хранения реальных URL изображений
+    const [productImages, setProductImages] = useState<string[]>([]);
+    
     const [api, setApi] = useState<CarouselApi>()
     const [current, setCurrent] = useState(0)
 
     const decodedSeason = season ? decodeURIComponent(season) : null;
-
-    const productImages = useMemo(() => {
-        if (!product || !product.image) return [];
-        const mainImage = `${SUPABASE_STORAGE_URL}/${product.image}`;
-        const baseArticle = product.image.replace(/\.webp$/, '');
-        const additionalImages = Array.from({ length: 5 }, (_, i) => `${SUPABASE_STORAGE_URL}/${baseArticle}-${i + 1}.webp`);
-        return [mainImage, ...additionalImages];
-    }, [product]);
-
-    const [verifiedImages, setVerifiedImages] = useState<string[]>([]);
-
-    useEffect(() => {
-        const verifyImages = async () => {
-            const verified: string[] = [];
-            for (const imageUrl of productImages) {
-                try {
-                    const response = await fetch(imageUrl, { method: 'HEAD' });
-                    if (response.ok) {
-                        verified.push(imageUrl);
-                    }
-                } catch (error) {
-                    // Image does not exist, do nothing
-                }
-            }
-             if (verified.length === 0 && product?.image) {
-                verified.push(`${SUPABASE_STORAGE_URL}/${product.image}`);
-            }
-            setVerifiedImages(verified);
-        };
-
-        if (productImages.length > 0) {
-            verifyImages();
-        }
-    }, [productImages, product?.image]);
 
     useEffect(() => {
         if (!api) {
@@ -122,13 +91,14 @@ export default function ProductPage() {
       }, [api])
 
     useEffect(() => {
-        const fetchProduct = async () => {
+        const fetchProductAndImages = async () => {
             if (!article || !gender || !decodedSeason) {
                 setLoading(false);
                 return;
             }
 
             setLoading(true);
+            setProductImages([]); // Сбрасываем изображения перед новым запросом
             try {
                 const { data, error } = await supabase
                     .from('products')
@@ -138,15 +108,50 @@ export default function ProductPage() {
                         variants!inner(id, size, color, purchase_price, sale_price, discount, stock)
                     `)
                     .eq('article', article)
+                    // Эти параметры могут быть не нужны, если артикул уникален, но для надежности оставим
                     .eq('gender', gender)
-                    .eq('season', decodedSeason);
+                    .eq('season', decodedSeason)
+                    .single(); // Ожидаем один объект, а не массив
 
-                if (error || !data || data.length === 0) {
+                if (error || !data) {
                     console.error('Product loading error:', error);
                     setProduct(null);
                 } else {
-                    const fetchedProduct = data[0] as unknown as Product;
+                    const fetchedProduct = data as unknown as Product;
                     setProduct(fetchedProduct);
+
+                    // --- НОВАЯ УМНАЯ ЛОГИКА ЗАГРУЗКИ ИЗОБРАЖЕНИЙ ---
+                    if (fetchedProduct.image) {
+                        const imageFolder = 'img-site';
+                        // Получаем префикс файла, например '5S486X00W' из '5S486X00W.webp'
+                        const imagePrefix = fetchedProduct.image.split('.')[0];
+                        
+                        const { data: imageList, error: listError } = await supabase
+                            .storage
+                            .from('image')
+                            .list(imageFolder, {
+                                search: `${imagePrefix}` // Ищем все файлы, начинающиеся с этого префикса
+                            });
+                        
+                        if (listError) {
+                            console.error('Ошибка при получении списка изображений:', listError);
+                            // В случае ошибки показываем хотя бы главное изображение
+                            setProductImages([`${SUPABASE_STORAGE_URL}/${fetchedProduct.image}`]);
+                        } else {
+                            // Формируем полный URL для каждого найденного изображения
+                            const imageUrls = imageList.map(file => `${SUPABASE_STORAGE_URL}/${file.name}`);
+                            
+                            // Гарантируем, что основное изображение будет первым
+                            const mainImageUrl = `${SUPABASE_STORAGE_URL}/${fetchedProduct.image}`;
+                            const sortedImages = [
+                                mainImageUrl,
+                                ...imageUrls.filter(url => url !== mainImageUrl)
+                            ];
+                            
+                            setProductImages(Array.from(new Set(sortedImages))); // Убираем дубликаты и сохраняем
+                        }
+                    }
+                    // --- КОНЕЦ НОВОЙ ЛОГИКИ ---
 
                     const grouped: Record<string, Variant[]> = {};
                     fetchedProduct.variants.forEach(variant => {
@@ -179,9 +184,10 @@ export default function ProductPage() {
             }
         };
 
-        fetchProduct();
+        fetchProductAndImages();
     }, [article, gender, decodedSeason]);
-
+    
+    // ... (все остальные хендлеры и функции остаются без изменений)
     const handleToggleFavorite = () => {
         if (!product) return;
 
@@ -266,7 +272,8 @@ export default function ProductPage() {
         setFullscreenImageUrl(imageUrl);
         setIsFullscreenImageOpen(true);
     };
-
+    
+    // ... (JSX разметка, использующая `productImages` вместо `verifiedImages`)
     if (loading) {
         return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Загрузка товара...</div>;
     }
@@ -299,7 +306,6 @@ export default function ProductPage() {
         <div className="min-h-screen bg-gray-50">
             <Header />
             <div className="container mx-auto px-4 py-8">
-                {/* ДОБАВЛЕННЫЕ КНОПКИ НАВИГАЦИИ */}
                 <div className="flex items-center gap-4 mb-6">
                     <Button variant="outline" onClick={() => navigate(-1)}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -317,7 +323,7 @@ export default function ProductPage() {
                     <div>
                          <Carousel className="w-full max-w-xl mx-auto" setApi={setApi}>
                             <CarouselContent>
-                                {verifiedImages.map((src, index) => (
+                                {productImages.map((src, index) => (
                                     <CarouselItem key={index} onClick={() => openFullscreenImage(src)}>
                                         <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer">
                                             <img 
@@ -337,7 +343,7 @@ export default function ProductPage() {
                             <CarouselNext />
                         </Carousel>
                         <div className="flex justify-center gap-2 mt-4">
-                            {verifiedImages.map((src, index) => (
+                            {productImages.map((src, index) => (
                                 <button 
                                     key={index} 
                                     onClick={() => api?.scrollTo(index)}
