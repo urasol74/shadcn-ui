@@ -13,6 +13,7 @@ interface HighlightProduct {
   gender: string;
   season: string;
   image: string;
+  category_id: number;
   variants: {
     purchase_price: number;
   }[];
@@ -47,13 +48,13 @@ const BenettonHomePage = () => {
       const findProductForGender = async (gender: string) => {
         const { data: candidates, error } = await supabase
           .from('products')
-          .select('id, name, article, gender, season, image, variants!inner(purchase_price, stock)')
+          .select('id, name, article, gender, season, image, category_id, variants!inner(purchase_price, stock)')
           .eq('gender', gender)
           .not('image', 'is', null)
           .neq('image', '')
           .not('image', 'ilike', '%placeholder%')
           .gt('variants.stock', 0)
-          .limit(15); // Запрашиваем 15 кандидатов
+          .limit(15);
 
         if (error || !candidates) {
           console.error(`Ошибка при загрузке кандидатов для ${gender}:`, error);
@@ -94,10 +95,10 @@ const BenettonHomePage = () => {
         <section className="relative h-[70vh] w-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop')" }}>
           <div className="absolute inset-0 bg-black bg-opacity-30"></div>
           <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white">
-          <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
-            <span className="block">Benetton</span>
-            <span className="block">Раскрась свой мир</span>
-          </h1>
+            <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
+              <span className="block">Benetton</span>
+              <span className="block">Раскрась свой мир</span>
+            </h1>
             <p className="mb-8 max-w-2xl text-lg">Откройте новую коллекцию, с разнообразием и ярким самовыражением!</p>
             <Link to="/gender/жiн/season/all">
                 <button
@@ -113,7 +114,7 @@ const BenettonHomePage = () => {
         <section className="py-20" style={{ backgroundColor: brandColors.backgroundLight }}>
           <div className="container mx-auto px-6">
             <h2 className="mb-12 text-center text-3xl font-bold" style={{ color: brandColors.darkGreen }}>
-            Лучшее сегодня - новая коллекция!
+              Лучшее сегодня - новая коллекция!
             </h2>
             {loading ? (
                 <div className="text-center py-8">Загрузка рекомендуемых товаров...</div>
@@ -122,7 +123,7 @@ const BenettonHomePage = () => {
                 {highlightedProducts.map((product) => (
                     <Link 
                         key={product.id} 
-                        to={`/gender/${product.gender}/season/${encodeURIComponent(product.season)}/product/${product.article}`}
+                        to={`/gender/${product.gender}/season/${encodeURIComponent(product.season)}/category/${product.category_id}/${product.article}`}
                         className="group block overflow-hidden rounded-lg bg-white shadow-lg"
                     >
                         <div className="overflow-hidden aspect-w-1 aspect-h-1">
@@ -130,7 +131,6 @@ const BenettonHomePage = () => {
                                 src={`${SUPABASE_STORAGE_URL}/${product.image}`}
                                 alt={product.name}
                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                // Эта логика остается как запасной вариант
                                 onError={({ currentTarget }) => {
                                     currentTarget.onerror = null; 
                                     currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
@@ -152,16 +152,16 @@ const BenettonHomePage = () => {
         
         <section className="container mx-auto grid grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2">
             <div className="order-2 md:order-1">
-                <h2 className="mb-4 text-3xl font-bold" style={{ color: brandColors.darkGreen }}>A Story of Color</h2>
+                <h2 className="mb-4 text-3xl font-bold" style={{ color: brandColors.darkGreen }}>История цвета</h2>
                 <p className="mb-6 text-gray-600">
-                    Since 1965, United Colors of Benetton has woven a narrative of style that transcends borders. Our identity is built on vibrant colors, authentic fashion, and a commitment to a better future.
+                    С 1965 года United Colors of Benetton создает историю стиля, выходящую за рамки границ. Наша идентичность построена на ярких цветах, аутентичной моде и стремлении к лучшему будущему.
                 </p>
                 <a href="#" className="font-bold uppercase tracking-wider" style={{ color: brandColors.primaryGreen }}>
-                    Learn More &rarr;
+                    Узнать больше &rarr;
                 </a>
             </div>
             <div className="order-1 h-80 w-full overflow-hidden rounded-lg shadow-xl md:order-2">
-                 <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" alt="Model posing in Benetton fashion" className="h-full w-full object-cover" />
+                 <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" alt="Модель позирует в одежде Benetton" className="h-full w-full object-cover" />
             </div>
         </section>
 
@@ -175,7 +175,7 @@ const BenettonHomePage = () => {
             <a href="#" className="hover:underline">Facebook</a>
             <a href="#" className="hover:underline">Twitter</a>
           </div>
-          <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} Benetton Group S.r.l. All rights reserved.</p>
+          <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} Benetton Group S.r.l. Все права защищены.</p>
         </div>
       </footer>
     </div>
