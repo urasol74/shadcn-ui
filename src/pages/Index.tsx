@@ -48,12 +48,13 @@ const BenettonHomePage = () => {
       const findProductForGender = async (gender: string) => {
         const { data: candidates, error } = await supabase
           .from('products')
-          .select('id, name, article, gender, season, image, category_id, variants!inner(purchase_price, stock)')
+          .select('id, name, article, gender, season, image, category_id, variants!inner(purchase_price, stock, discount)')
           .eq('gender', gender)
           .not('image', 'is', null)
           .neq('image', '')
           .not('image', 'ilike', '%placeholder%')
           .gt('variants.stock', 0)
+          .or('discount.is.null,discount.eq.0', { foreignTable: 'variants' }) // Только товары без скидки
           .limit(15);
 
         if (error || !candidates) {
@@ -145,7 +146,7 @@ const BenettonHomePage = () => {
                 ))}
                 </div>
             ) : (
-                <div className="text-center py-8 text-gray-500">Не удалось загрузить товары.</div>
+                <div className="text-center py-8 text-gray-500">Не удалось загрузить товары из новой коллекции.</div>
             )}
           </div>
         </section>
