@@ -1,57 +1,48 @@
 import { useEffect, useState } from 'react';
 import { supabaseApi } from '@/lib/supabase-api';
 
-export const useIsProduct = (decodedSeason: string | null, categoryId: string | undefined, seasons: string[]) => {
+/**
+ * Хук для определения, является ли параметр в URL артикулом товара.
+ * Логика упрощена для устранения циклических зависимостей и лишних запросов.
+ */
+export const useIsProduct = (potentialArticle: string | null, categoryId: string | undefined) => {
     const [isProduct, setIsProduct] = useState<boolean | null>(null);
     const [productData, setProductData] = useState<any>(null);
 
     useEffect(() => {
-        // Если у нас есть categoryId, это точно не товар
-        if (categoryId) {
+        // Сбрасываем состояние при каждом новом рендере, чтобы избежать старых данных
+        setIsProduct(null);
+        setProductData(null);
+
+        // 1. Быстрая проверка: если есть ID категории или параметр "all", это точно не товар.
+        if (categoryId || !potentialArticle || potentialArticle === 'all') {
             setIsProduct(false);
             return;
         }
-        
-        // Если season равен "all", это точно не товар
-        if (decodedSeason === 'all') {
-            setIsProduct(false);
-            return;
-        }
-        
-        // Если season совпадает с одним из известных сезонов, это точно сезон
-        if (decodedSeason && seasons.includes(decodedSeason)) {
-            setIsProduct(false);
-            return;
-        }
-        
-        // Если season не совпадает с известными сезонами, проверяем, является ли он артикулом товара
-        if (decodedSeason) {
-            const checkIfProductExists = async () => {
-                try {
-                    console.log('Проверка, является ли параметр товаром:', decodedSeason);
-                    const productData = await supabaseApi.getProduct(decodedSeason);
-                    
-                    if (productData && productData.product) {
-                        console.log('Найден товар:', productData.product);
-                        setIsProduct(true);
-                        setProductData(productData);
-                    } else {
-                        console.log('Товар не найден, считаем параметр сезоном');
-                        setIsProduct(false);
-                    }
-                } catch (error) {
-                    console.error('Ошибка при проверке товара:', error);
-                    // Если ошибка, считаем, что это сезон
+
+        // 2. Решающая проверка: делаем ОДИН запрос для определения, существует ли товар.
+        const checkProduct = async () => {
+            try {
+                const data = await supabaseApi.getProduct(potentialArticle);
+                if (data && data.product) {
+                    // Товар найден
+                    setIsProduct(true);
+                    setProductData(data);
+                } else {
+                    // Товар не найден, значит, это страница сезона
                     setIsProduct(false);
                 }
-            };
-            
-            checkIfProductExists();
-        } else {
-            // Если нет decodedSeason, это не товар
-            setIsProduct(false);
-        }
-    }, [decodedSeason, categoryId, seasons]);
+            } catch (error) {
+                // В случае ошибки (недоступность API и т.д.) считаем, что это не товар
+                console.error('Ошибка при выполнении проверки товара:', error);
+                setIsProduct(false);
+            }
+        };
+
+        checkProduct();
+
+    // 3. Зависимость ТОЛЬКО от параметров URL. Хук не будет перезапускаться без надобности.
+    }, [potentialArticle, categoryId]);
 
     return { isProduct, productData };
 };

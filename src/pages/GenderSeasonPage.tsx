@@ -22,9 +22,10 @@ export default function GenderSeasonPage() {
 
     const decodedSeason = season ? decodeURIComponent(season) : null;
     
-    // 1. Разделяем состояния загрузки
-    const { isProduct, productData } = useIsProduct(decodedSeason, categoryId, []);
+    // 1. Логика определения товара и загрузка каталога теперь разделены и не блокируют друг друга
+    const { isProduct, productData } = useIsProduct(decodedSeason, categoryId);
     const { seasons, categories, loading: catalogLoading } = useCatalogData(gender, decodedSeason, isProduct);
+
     const [products, setProducts] = useState<any[]>([]);
     const [productsLoading, setProductsLoading] = useState(true);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -33,10 +34,8 @@ export default function GenderSeasonPage() {
 
     // Эффект для проверки существования категории при смене сезона
     useEffect(() => {
-        // Запускаем проверку только после загрузки каталога и если категория выбрана
         if (!catalogLoading && categoryId && categories.length > 0) {
             const categoryExistsInNewSeason = categories.some(cat => String(cat.id) === String(categoryId));
-
             if (!categoryExistsInNewSeason) {
                 const targetPath = (decodedSeason && decodedSeason !== 'all')
                     ? `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}`
@@ -46,15 +45,12 @@ export default function GenderSeasonPage() {
         }
     }, [categories, categoryId, catalogLoading, navigate, gender, decodedSeason]);
 
-    // 2. Оптимизированный эффект для загрузки ТОВАРОВ
+    // Эффект для загрузки товаров (запускается, только если это не страница товара)
     useEffect(() => {
-        // Не запускаем, если мы на странице товара или нет нужных данных
-        if (isProduct === true || !gender) {
+        if (isProduct === true || !gender || isProduct === null) {
             setProductsLoading(false);
             return;
         }
-        // Не запускаем, пока определяются данные по каталогу
-        if (isProduct === null) return;
         
         const loadProducts = async () => {
             setProductsLoading(true);
@@ -76,7 +72,6 @@ export default function GenderSeasonPage() {
                 const { data, error } = await query.limit(200);
 
                 if (error) {
-                    console.error('Products loading error:', error);
                     setProducts([]);
                     return;
                 }
@@ -116,17 +111,19 @@ export default function GenderSeasonPage() {
         };
         
         loadProducts();
-    // 3. Убраны лишние зависимости (categories, setLoading). Эффект реагирует только на смену фильтров.
     }, [decodedSeason, gender, selectedCategory, isProduct]);
 
-    if (isProduct === null && (decodedSeason || categoryId)) {
-        return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Проверка...</div>;
+    // Пока идет определение (сезон или товар), показываем нейтральный лоадер
+    if (isProduct === null) {
+        return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Анализ адреса...</div>;
     }
 
+    // Если это товар, показываем его
     if (isProduct === true && productData) {
         return <ProductViewInline productData={productData} gender={gender} />;
     }
     
+    // Общий статус загрузки для каталога или товаров
     const isLoading = catalogLoading || productsLoading;
 
     const getGenderTitle = (g: string) => {
