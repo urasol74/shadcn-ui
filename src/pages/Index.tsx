@@ -104,7 +104,7 @@ const BenettonHomePage = () => {
                 className="transform rounded-full px-12 py-3 text-sm font-bold uppercase tracking-wider text-white transition-transform hover:scale-105"
                 style={{ backgroundColor: brandColors.primaryGreen }}
                 >
-                Shop Now
+                Каталог магазина
                 </button>
             </Link>
           </div>
