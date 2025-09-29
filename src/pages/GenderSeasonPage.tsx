@@ -32,6 +32,27 @@ export default function GenderSeasonPage() {
         }
     }, [categoryId]);
 
+    // НОВАЯ ЛОГИКА: Проверка и перенаправление при смене сезона
+    useEffect(() => {
+        // Запускаем проверку только после загрузки данных и если в URL есть категория
+        if (!loading && categoryId) {
+            // Проверяем, существует ли текущая категория в новом списке категорий для сезона
+            const categoryExistsInNewSeason = categories.some(cat => String(cat.id) === String(categoryId));
+
+            // Если категория НЕ существует в новом сезоне...
+            if (!categoryExistsInNewSeason) {
+                // ...перенаправляем пользователя на страницу "все категории" для текущего сезона.
+                const targetPath = (decodedSeason && decodedSeason !== 'all')
+                    ? `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}`
+                    : `/gender/${gender}/season/all`;
+                
+                console.log(`Категория ID ${categoryId} не найдена в сезоне "${decodedSeason}". Перенаправление на ${targetPath}`);
+                navigate(targetPath, { replace: true }); // replace: true чтобы не создавать лишней записи в истории браузера
+            }
+        }
+    }, [categories, categoryId, loading, navigate, gender, decodedSeason]);
+
+
     useEffect(() => {
         if (!gender || isProduct === true) return;
         
