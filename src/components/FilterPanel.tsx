@@ -1,77 +1,134 @@
-
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+// --- ТИПЫ --- //
 interface Category {
     id: number;
     name: string;
 }
 
-interface FilterPanelProps {
-    gender: string | undefined;
-    decodedSeason: string | null;
-    selectedCategory: string | null;
-    seasons: string[];
-    categories: Category[];
-    onFilterChange?: () => void; // Колбэк для закрытия мобильного меню
+interface GenderInfo {
+    id: string;
+    name: string;
 }
 
-const FilterPanel = ({
-    gender,
-    decodedSeason,
-    selectedCategory,
-    seasons,
-    categories,
-    onFilterChange
-}: FilterPanelProps) => {
+interface FilterPanelProps {
+    currentGender: string;
+    currentSeason: string | null;
+    selectedCategory: string | null;
+    genders: GenderInfo[];
+    seasons: string[];
+    categories: Category[];
+    onFilterChange?: () => void;
+}
 
-    if (!gender) return null;
+// --- КОМПОНЕНТЫ --- //
 
-    const getSeasonLink = (seasonName: string) => selectedCategory ? 
-        `/gender/${gender}/season/${encodeURIComponent(seasonName)}/category/${selectedCategory}` : 
-        `/gender/${gender}/season/${encodeURIComponent(seasonName)}`;
+/**
+ * Всплывающее окно с категориями, которое появляется при наведении на сезон.
+ */
+const SeasonPopover = ({ season, currentGender, currentSeason, selectedCategory, categories, onLinkClick }: any) => {
+    const [isHovering, setIsHovering] = useState(false);
+    const seasonDisplayName = season === 'all' ? 'Все сезоны' : season;
+    const isActive = (currentSeason === season) || (season === 'all' && (currentSeason === 'all' || !currentSeason));
 
-    const getCategoryLink = (catId: string) => (decodedSeason && decodedSeason !== 'all') ? 
-        `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}/category/${catId}` :
-        `/gender/${gender}/season/all/category/${catId}`;
-
-    const getAllCategoriesLink = () => (decodedSeason && decodedSeason !== 'all') ?
-         `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}` :
-         `/gender/${gender}/season/all`;
-    
-    const handleLinkClick = () => {
-        if (onFilterChange) {
-            onFilterChange();
-        }
-    };
+    const getCategoryLink = (catId: string) => `/gender/${currentGender}/season/${season}/category/${catId}`;
+    const getAllCategoriesLink = () => `/gender/${currentGender}/season/${season}`;
 
     return (
-        // 1. УБИРАЕМ md:flex-row, чтобы контейнер всегда был вертикальным (flex-col)
-        <div className="flex flex-col gap-6">
-            <div>
-                <h3 className="font-semibold mb-3 text-lg">Сезоны</h3>
-                {/* 2. Делаем кнопки сезонов всегда в строку с переносом */}
-                <div className="flex flex-row flex-wrap gap-2 items-start">
-                    <Link to={`/gender/${gender}/season/all`} className={`px-3 py-1.5 rounded-md text-sm transition-colors ${!decodedSeason || decodedSeason === 'all' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`} onClick={handleLinkClick}>Все сезоны</Link>
-                    {seasons.map((seasonName) => (
-                        <Link key={seasonName} to={getSeasonLink(seasonName)} className={`px-3 py-1.5 rounded-md text-sm transition-colors ${decodedSeason === seasonName ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`} onClick={handleLinkClick}>{seasonName}</Link>
-                    ))}
+        <div 
+            className="relative"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+        >
+            {/* Кнопка сезона в виде таблетки (ИЗМЕНЕНО) */}
+            <Link 
+                to={getAllCategoriesLink()}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap ${ 
+                    isActive 
+                    ? 'bg-gray-100 text-gray-900 border border-gray-200' 
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+                onClick={onLinkClick}
+            >
+                {seasonDisplayName}
+            </Link>
+
+            {/* Панель с категориями */}
+            {isHovering && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30">
+                    <div className="w-max bg-white rounded-xl shadow-2xl border p-8"> 
+                        <div className="grid grid-cols-3 gap-x-16 gap-y-4">
+                            <Link 
+                                to={getAllCategoriesLink()} 
+                                className={`text-sm whitespace-nowrap ${!selectedCategory ? 'text-gray-900 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                                onClick={onLinkClick}
+                            >
+                               Все категории
+                            </Link>
+                            {categories.map((category: Category) => (
+                                <Link 
+                                    key={category.id} 
+                                    to={getCategoryLink(String(category.id))} 
+                                    className={`text-sm whitespace-nowrap ${String(selectedCategory) === String(category.id) ? 'text-gray-900 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                                    onClick={onLinkClick}
+                                >
+                                    {category.name}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Основная панель фильтров, объединяющая выбор пола и сезонов.
+ */
+const FilterPanel = (props: FilterPanelProps) => {
+    if (!props.currentGender || !props.genders) return null;
+    
+    const allSeasons = ['all', ...props.seasons];
+
+    return (
+        <div className="flex items-center justify-between w-full h-16"> 
+            
+            {/* Левый блок: Переключатель полов */}
+            <div className="bg-gray-100 p-1 rounded-full flex items-center space-x-1">
+                {props.genders.map(gender => (
+                    <Link
+                        key={gender.id}
+                        to={`/gender/${gender.id}/season/all`}
+                        onClick={props.onFilterChange}
+                        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${ 
+                            props.currentGender === gender.id 
+                            ? 'bg-gray-800 text-white shadow-md' 
+                            : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                    >
+                        {gender.name}
+                    </Link>
+                ))}
             </div>
-            {/* 3. Делаем разделитель всегда горизонтальным */}
-            <div className="border-t my-0"></div>
-            <div>
-                <h3 className="font-semibold mb-3 text-lg">Категории</h3>
-                 {/* 4. Делаем кнопки категорий всегда в строку с переносом */}
-                <div className="flex flex-row flex-wrap gap-2 items-start">
-                    <Link to={getAllCategoriesLink()} className={`px-3 py-1.5 rounded-md text-sm transition-colors ${!selectedCategory ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`} onClick={handleLinkClick}>Все категории</Link>
-                    {categories.map((category: Category) => (
-                        <Link key={category.id} to={getCategoryLink(String(category.id))} className={`px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap ${String(selectedCategory) === String(category.id) ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`} onClick={handleLinkClick}>{category.name}</Link>
-                    ))}
-                </div>
+
+            {/* Правый блок: Сезоны с Popover */}
+            <div className="flex items-center space-x-3">
+                {allSeasons.map(season => (
+                    <SeasonPopover 
+                        key={season} 
+                        season={season} 
+                        currentGender={props.currentGender}
+                        currentSeason={props.currentSeason}
+                        selectedCategory={props.selectedCategory}
+                        categories={props.categories}
+                        onLinkClick={props.onFilterChange}
+                    />
+                ))}
             </div>
         </div>
     );
 };
 
 export default FilterPanel;
-

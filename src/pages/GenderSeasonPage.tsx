@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -7,10 +7,9 @@ import { useIsProduct } from '@/hooks/useIsProduct';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { ProductViewInline } from '@/components/ProductViewInline';
 import ProductCard from '@/components/ProductCard';
-import FilterPanel from '@/components/FilterPanel'; // 1. ИМПОРТИРУЕМ НОВЫЙ КОМПОНЕНТ
+import FilterPanel from '@/components/FilterPanel';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from 'lucide-react';
-
 
 export default function GenderSeasonPage() {
     const { season, gender, categoryId } = useParams();
@@ -49,6 +48,7 @@ export default function GenderSeasonPage() {
         
         const loadProducts = async () => {
             setProductsLoading(true);
+            // ... (rest of the logic is unchanged)
             try {
                 let query = supabase
                     .from('products')
@@ -113,81 +113,65 @@ export default function GenderSeasonPage() {
     
     const isLoading = catalogLoading || productsLoading;
 
-    const getGenderTitle = (g: string) => {
-        const titles: { [key: string]: string } = {
-            'чол': 'Мужская коллекция', 'жiн': 'Женская коллекция',
-            'хлопч': 'Коллекция для мальчиков', 'дiвч': 'Коллекция для девочек', 
-            'дівч': 'Коллекция для девочек'
-        };
-        return titles[g] || 'Коллекция';
-    };
-
-    const getOtherGenders = () => [
+    const genderOptions = [
         { id: 'чол', name: 'Он' }, { id: 'жiн', name: 'Она' },
         { id: 'хлопч', name: 'Мальчик' }, { id: 'дiвч', name: 'Девочка' }
-    ].filter(g => g.id !== gender);
-
-    // 2. УДАЛЯЕМ СТАРУЮ, втроенную реализацию FilterPanel
+    ];
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
             
             <div className="bg-white border-b sticky top-0 z-20">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <h1 className="text-3xl font-bold text-gray-900">
-                            {getGenderTitle(gender || '')}
-                        </h1>
-                        <div className="flex flex-wrap gap-2">
-                            {getOtherGenders().map((g) => (
-                                <Link key={g.id} to={`/gender/${g.id}/season/all`} className="px-3 py-1 rounded-full text-sm bg-gray-200 text-gray-700 hover:bg-gray-300">{g.name}</Link>
-                            ))}
-                        </div>
+                <div className="container mx-auto px-4">
+                    
+                    <div className="hidden md:block"> 
+                        <FilterPanel 
+                            currentGender={gender!}
+                            currentSeason={decodedSeason}
+                            genders={genderOptions}
+                            seasons={seasons}
+                            categories={categories}
+                            selectedCategory={selectedCategory}
+                        />
                     </div>
                     
-                    {/* 3. ИСПОЛЬЗУЕМ FilterPanel ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */}
-                    <div className="md:hidden mt-4">
+                    <div className="md:hidden py-3">
                         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                             <SheetTrigger asChild>
-                                <Button variant="outline" className="w-full flex items-center gap-2"><Menu size={16} /> Меню фильтров</Button>
+                                <Button variant="outline" className="w-full flex items-center gap-2"><Menu size={16} /> Навигация</Button>
                             </SheetTrigger>
                             <SheetContent side="left">
                                 <SheetHeader>
-                                    <SheetTitle>Фильтры</SheetTitle>
+                                    <SheetTitle>Навигация</SheetTitle>
                                 </SheetHeader>
                                 <div className="py-4">
                                     <FilterPanel 
-                                        gender={gender}
-                                        decodedSeason={decodedSeason}
-                                        selectedCategory={selectedCategory}
+                                        currentGender={gender!}
+                                        currentSeason={decodedSeason}
+                                        genders={genderOptions}
                                         seasons={seasons}
                                         categories={categories}
+                                        selectedCategory={selectedCategory}
                                         onFilterChange={() => setIsSheetOpen(false)}
                                     />
                                 </div>
                             </SheetContent>
                         </Sheet>
                     </div>
-                    
-                    {/* 4. ИСПОЛЬЗУЕМ FilterPanel ДЛЯ ДЕСКТОПА (ВОССТАНОВЛЕНО) */}
-                    <div className="hidden md:block mt-6 pt-4 border-t"> 
-                        <FilterPanel 
-                            gender={gender}
-                            decodedSeason={decodedSeason}
-                            selectedCategory={selectedCategory}
-                            seasons={seasons}
-                            categories={categories}
-                        />
-                    </div>
                 </div>
             </div>
             
             <div className="container mx-auto px-4 py-8">
                 {isLoading ? (
-                    <div className="text-center py-8">Загрузка товаров...</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        {Array.from({ length: 10 }).map((_, i) => <div key={i} className="bg-gray-200 h-64 rounded-lg animate-pulse"></div>)}
+                    </div>
                 ) : products.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">Товары не найдены</div>
+                    <div className="text-center py-16 text-gray-500">
+                        <h2 className="text-xl font-semibold">Товары не найдены</h2>
+                        <p className="mt-2">Попробуйте изменить фильтры или выбрать другую категорию.</p>
+                    </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {products.map((product) => (
