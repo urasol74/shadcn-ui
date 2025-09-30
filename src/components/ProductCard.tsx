@@ -1,54 +1,71 @@
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ProductWithCategory } from '@/lib/database';
+import { Card, CardContent } from '@/components/ui/card';
+import { formatPrice, formatDiscount } from '@/lib/priceUtils';
 
+// Определяем интерфейс для пропсов, чтобы обеспечить типобезопасность
 interface ProductCardProps {
-  product: ProductWithCategory;
+  product: {
+    product_id: number;
+    article: string;
+    name: string;
+    gender: string;
+    season: string;
+    category_id: number;
+    purchase_price: number; // Старая цена
+    sale_price: number;     // Новая (актуальная) цена
+    discount?: number | null;
+    image?: string | null;
+  };
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  // Mock image - in real implementation would come from database
-  const imageUrl = `https://via.placeholder.com/300x400/22c55e/ffffff?text=${product.article}`;
+  const hasDiscount = product.discount && Number(product.discount) > 0;
+
+  // Формируем URL для страницы товара прямо здесь
+  const productUrl = `/gender/${product.gender}/season/${encodeURIComponent(product.season)}/category/${product.category_id}/${product.article}`;
+
+  const placeholderImage = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
+  const imageUrl = product.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${product.image}` : placeholderImage;
 
   return (
-    <Link to={`/product/${product.id}`} className="block focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg">
-      <Card className="group hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
-        <CardContent className="p-0">
-          <div className="aspect-[3/4] overflow-hidden rounded-t-lg">
-            <img
+    // Вся карточка - это единая ссылка
+    <Link to={productUrl} className="block focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg h-full">
+      <Card className="hover:shadow-lg transition-shadow h-full flex flex-col">
+        <CardContent className="p-4 flex flex-col flex-grow">
+          <div className="h-48 bg-gray-100 rounded-md mb-3 flex items-center justify-center overflow-hidden">
+            <img 
               src={imageUrl}
               alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-contain"
+              // В случае ошибки загрузки, устанавливаем placeholder
+              onError={({ currentTarget }) => {
+                  currentTarget.onerror = null;
+                  currentTarget.src = placeholderImage;
+              }}
             />
           </div>
+          
+          <h3 className="font-medium text-sm mb-1 line-clamp-2 flex-grow">{product.name}</h3>
+          
+          <div className="space-y-1 mt-auto">
+            {/* Старая цена (перечеркнутая) или невидимый блок для сохранения верстки */}
+            {hasDiscount ? (
+              <div className="text-gray-500 line-through text-sm">{formatPrice(product.purchase_price)}</div>
+            ) : (
+              <div className="invisible text-sm" style={{ height: '1.25rem' }}>&nbsp;</div>
+            )}
+            
+            {/* Актуальная цена */}
+            <div className="font-semibold text-blue-600">{formatPrice(product.sale_price)}</div>
+            
+            {/* Бейдж "Скидка" или "Новая коллекция" */}
+            {hasDiscount ? (
+              <div className="text-red-600 text-sm">Скидка: {formatDiscount(product.discount)}</div>
+            ) : (
+              <div className="text-green-600 text-sm">Новая коллекция</div>
+            )}
+          </div>
         </CardContent>
-        <CardFooter className="p-4 flex-grow flex flex-col items-start">
-            <div className="w-full space-y-2">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                    <h3 className="font-medium text-sm leading-tight">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{product.category_name}</p>
-                    </div>
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                    {product.brand}
-                    </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                    <span className="text-xs text-muted-foreground">от</span>
-                    <span className="font-semibold ml-1">1000 ₴</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                    {product.gender === 'чол' ? 'Мужское' : 
-                    product.gender === 'жiн' ? 'Женское' : 
-                    product.gender === 'хлопч' ? 'Мальчик' : 
-                    product.gender === 'дiвч' ? 'Девочка' : 'Универсал'}
-                    </Badge>
-                </div>
-            </div>
-        </CardFooter>
       </Card>
     </Link>
   );
