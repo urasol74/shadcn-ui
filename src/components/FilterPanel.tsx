@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 // --- ТИПЫ --- //
 interface Category {
@@ -22,14 +23,11 @@ interface FilterPanelProps {
     onFilterChange?: () => void; // Флаг для мобильной версии
 }
 
-// --- КОМПОНЕНТЫ --- //
-
 // #region --- Desktop Components ---
 const SeasonPopover = ({ season, currentGender, currentSeason, selectedCategory, categories, onLinkClick }: any) => {
     const [isHovering, setIsHovering] = useState(false);
     const seasonDisplayName = season === 'all' ? 'Все сезоны' : season;
     const isActive = (currentSeason === season) || (season === 'all' && (currentSeason === 'all' || !currentSeason));
-
     const getCategoryLink = (catId: string) => `/gender/${currentGender}/season/${season}/category/${catId}`;
     const getAllCategoriesLink = () => `/gender/${currentGender}/season/${season}`;
 
@@ -38,8 +36,7 @@ const SeasonPopover = ({ season, currentGender, currentSeason, selectedCategory,
             <Link 
                 to={getAllCategoriesLink()}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap ${isActive ? 'bg-gray-100 text-gray-900 border border-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}
-                onClick={onLinkClick}
-            >
+                onClick={onLinkClick}>
                 {seasonDisplayName}
             </Link>
             {isHovering && (
@@ -71,72 +68,108 @@ const FilterPanel = (props: FilterPanelProps) => {
     
     const allSeasons = ['all', ...seasons];
 
-    // --- МОБИЛЬНАЯ ВЕРСИЯ (ИСПРАВЛЕНО) --- //
+    // --- МОБИЛЬНАЯ ВЕРСИЯ (НОВАЯ ЛОГИКА) --- //
     if (isMobile) {
+        const navigate = useNavigate();
+        
+        const [selection, setSelection] = useState({
+            gender: currentGender,
+            season: currentSeason,
+            category: selectedCategory,
+        });
+
+        const handleGenderSelect = (genderId: string) => {
+            setSelection({ gender: genderId, season: 'all', category: null });
+        };
+
+        const handleSeasonSelect = (season: string) => {
+            if (selection.season === season) return;
+            setSelection({ ...selection, season: season, category: null });
+        };
+
+        const handleCategorySelect = (categoryId: string | null) => {
+            setSelection({ ...selection, category: categoryId });
+        };
+        
+        const handleApply = () => {
+            const { gender, season, category } = selection;
+            let path = `/gender/${gender}/season/${season || 'all'}`;
+            if (category) {
+                path += `/category/${category}`;
+            }
+            navigate(path);
+            if (onFilterChange) {
+                onFilterChange();
+            }
+        };
+
         return (
-            // 1. Контейнер теперь занимает всю высоту и разделяет контент на статичный и скролл
             <div className="flex flex-col h-full">
-                {/* --- СТАТИЧНАЯ ЧАСТЬ --- */}
-                <div>
-                    <div className="bg-gray-100 p-1 rounded-full grid grid-cols-4 gap-1">
-                         {genders.map(gender => (
-                            <Link
-                                key={gender.id}
-                                to={`/gender/${gender.id}/season/all`}
-                                onClick={onFilterChange}
-                                className={`px-2 py-2 text-xs text-center font-semibold rounded-full transition-all duration-300 ${currentGender === gender.id ? 'bg-white text-gray-900 shadow' : 'text-gray-500'}`}>
-                                {gender.name}
-                            </Link>
-                        ))}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="p-4">
+                        <h4 className="font-semibold text-gray-800 px-3 pb-3">Пол</h4>
+                        <div className="bg-gray-100 p-1 rounded-full grid grid-cols-4 gap-1">
+                            {genders.map(gender => (
+                                <button
+                                    key={gender.id}
+                                    onClick={() => handleGenderSelect(gender.id)}
+                                    className={`px-2 py-2 text-xs text-center font-semibold rounded-full transition-all duration-300 ${selection.gender === gender.id ? 'bg-white text-gray-900 shadow' : 'text-gray-500'}`}>
+                                    {gender.name}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                {/* --- СКРОЛЛИРУЕМАЯ ЧАСТЬ --- */}
-                <div className="flex-1 overflow-y-auto mt-4 pt-4 border-t">
-                    {/* Блок сезонов */}
-                    <div className="flex flex-col space-y-2">
+                    <div className="p-4 pt-0">
                         <h4 className="font-semibold text-gray-800 px-3 pb-2">Сезоны</h4>
-                        {allSeasons.map(season => {
-                            const seasonDisplayName = season === 'all' ? 'Все сезоны' : season;
-                            const isActive = (currentSeason === season) || (season === 'all' && !currentSeason);
-                            return (
-                                <Link
-                                    key={season}
-                                    to={`/gender/${currentGender}/season/${season}`}
-                                    onClick={onFilterChange}
-                                    className={`block px-3 py-2 rounded-md text-sm ${isActive ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
-                                    {seasonDisplayName}
-                                </Link>
-                            )
-                        })}
+                        <div className="flex flex-col space-y-1">
+                            {allSeasons.map(season => {
+                                const seasonDisplayName = season === 'all' ? 'Все сезоны' : season;
+                                const isActive = (selection.season === season) || (season === 'all' && !selection.season);
+                                return (
+                                    <button
+                                        key={season}
+                                        onClick={() => handleSeasonSelect(season)}
+                                        className={`block w-full text-left px-3 py-2 rounded-md text-sm ${isActive ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
+                                        {seasonDisplayName}
+                                    </button>
+                                )
+                            })}
+                        </div>
                     </div>
 
-                    {/* Блок категорий (в виде сетки) */}
                     {categories.length > 0 && (
-                        <div className="mt-4 pt-4 border-t">
+                        <div className="p-4 pt-0">
                             <h4 className="font-semibold text-gray-800 px-3 pb-2">Категории</h4>
-                            <div className="grid grid-cols-2 gap-1 px-2">
-                                <Link to={`/gender/${currentGender}/season/${currentSeason || 'all'}`} onClick={onFilterChange} className={`block col-span-2 px-3 py-2 rounded-md text-sm ${!selectedCategory ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
+                            <div className="grid grid-cols-2 gap-1">
+                                <button
+                                    onClick={() => handleCategorySelect(null)}
+                                    className={`block w-full text-left col-span-2 px-3 py-2 rounded-md text-sm ${!selection.category ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
                                     Все категории
-                                </Link>
+                                </button>
                                 {categories.map(category => (
-                                    <Link
+                                    <button
                                         key={category.id}
-                                        to={`/gender/${currentGender}/season/${currentSeason || 'all'}/category/${category.id}`}
-                                        onClick={onFilterChange}
-                                        className={`block px-3 py-2 rounded-md text-sm truncate ${String(selectedCategory) === String(category.id) ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
+                                        onClick={() => handleCategorySelect(String(category.id))}
+                                        className={`block w-full text-left px-3 py-2 rounded-md text-sm truncate ${String(selection.category) === String(category.id) ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
                                         {category.name}
-                                    </Link>
+                                    </button>
                                 ))}
                             </div>
                         </div>
                     )}
                 </div>
+
+                <div className="p-4 border-t bg-white">
+                    <Button onClick={handleApply} className="w-full h-12 text-base font-bold">
+                        Показать
+                    </Button>
+                </div>
             </div>
         );
     }
 
-    // --- ДЕСКТОПНАЯ ВЕРСИЯ --- //
+    // --- ДЕСКТОПНАЯ ВЕРСИЯ (БЕЗ ИЗМЕНЕНИЙ) --- //
     return (
         <div className="flex items-center justify-between w-full h-16"> 
             <div className="bg-gray-100 p-1 rounded-full flex items-center space-x-1">
