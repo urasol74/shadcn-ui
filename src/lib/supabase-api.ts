@@ -2,7 +2,34 @@ import { supabase } from './supabase'
 import { cacheService } from './cacheService'
 
 export const supabaseApi = {
-  // ... (остальные методы без изменений)
+
+  async searchProducts(query: string) {
+    if (query.length < 2) return [];
+
+    const cacheKey = cacheService.generateKey('searchProducts', { query });
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Используем полнотекстовый поиск Supabase. `to_tsvector` и `plainto_tsquery`
+    // должны быть настроены в вашей базе данных для эффективного поиска.
+    // Здесь мы ищем по 'name' и 'article'.
+    const { data, error } = await supabase
+      .from('products')
+      .select('name, article, gender, season, category_id, image')
+      // .textSearch('name_article_tsvector', query) // Предполагаем, что у вас есть tsvector колонка
+      .or(`name.ilike.%${query}%,article.ilike.%${query}%`) // Менее эффективный, но рабочий вариант без tsvector
+      .limit(10);
+
+    if (error) {
+      console.error('Search API error:', error);
+      return [];
+    }
+
+    cacheService.set(cacheKey, data);
+    return data;
+  },
 
   // Замена для /api/product
   async getProduct(article: string) {
