@@ -45,9 +45,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
             />
           </div>
           
-          <h3 className="font-medium text-sm mb-1 line-clamp-2 flex-grow">{product.name}</h3>
+          {/* 1. Добавляем text-center для центрирования названия */}
+          <h3 className="font-medium text-sm mb-1 line-clamp-2 flex-grow text-center">{product.name}</h3>
           
-          <div className="space-y-1 mt-auto">
+          {/* 2. Добавляем text-center к контейнеру с ценами и скидкой */}
+          <div className="space-y-1 mt-auto text-center">
             {/* Старая цена (перечеркнутая) или невидимый блок для сохранения верстки */}
             {hasDiscount ? (
               <div className="text-gray-500 line-through text-sm">{formatPrice(product.purchase_price)}</div>

@@ -12,23 +12,57 @@ export const supabaseApi = {
       return cached;
     }
 
-    // Используем полнотекстовый поиск Supabase. `to_tsvector` и `plainto_tsquery`
-    // должны быть настроены в вашей базе данных для эффективного поиска.
-    // Здесь мы ищем по 'name' и 'article'.
+    // 1. ИЗМЕНЯЕМ ЗАПРОС: добавляем `variants` для получения цен
     const { data, error } = await supabase
       .from('products')
-      .select('name, article, gender, season, category_id, image')
-      // .textSearch('name_article_tsvector', query) // Предполагаем, что у вас есть tsvector колонка
-      .or(`name.ilike.%${query}%,article.ilike.%${query}%`) // Менее эффективный, но рабочий вариант без tsvector
-      .limit(10);
+      .select(`
+        id, article, name, gender, season, category_id, image,
+        variants!inner(purchase_price, sale_price, discount, stock)
+      `)
+      .or(`name.ilike.%${query}%,article.ilike.%${query}%`)
+      .gt('variants.stock', 0) // Только товары в наличии
+      .limit(20);
 
     if (error) {
       console.error('Search API error:', error);
       return [];
     }
 
-    cacheService.set(cacheKey, data);
-    return data;
+    if (!data) {
+        return [];
+    }
+
+    // 2. ОБРАБАТЫВАЕМ РЕЗУЛЬТАТ: для каждого товара находим лучший вариант (самый дешевый)
+    // и создаем плоскую структуру данных, которую ожидает ProductCard.
+    const processedResults = data.map(product => {
+        if (!product.variants || product.variants.length === 0) {
+            return null;
+        }
+
+        // Находим вариант с самой низкой ценой продажи для отображения
+        const bestVariant = product.variants.reduce((best: any, current: any) => {
+            if (!best) return current;
+            return current.sale_price < best.sale_price ? current : best;
+        });
+
+        return {
+            product_id: product.id,
+            article: product.article,
+            name: product.name,
+            gender: product.gender,
+            season: product.season,
+            category_id: product.category_id,
+            image: product.image,
+            // Добавляем информацию о ценах из найденного варианта
+            purchase_price: bestVariant.purchase_price,
+            sale_price: bestVariant.sale_price,
+            discount: bestVariant.discount,
+        };
+    }).filter(p => p !== null); // Убираем пустые результаты
+
+
+    cacheService.set(cacheKey, processedResults);
+    return processedResults;
   },
 
   // Замена для /api/product
@@ -50,13 +84,11 @@ export const supabaseApi = {
       .eq('article', article)
       .maybeSingle();
 
-    // ВАЖНО: Если есть ошибка, но это НЕ ошибка "не найдено" - логируем.
     if (error) {
         console.error('[API] Ошибка при запросе товара:', error);
         return { product: null, variants: [] };
     }
 
-    // Если товар просто не найден, это не ошибка, а ожидаемое поведение.
     if (!product) {
         console.log(`[API] Товар с артикулом "${article}" не найден.`);
         return { product: null, variants: [] };
@@ -80,6 +112,4 @@ export const supabaseApi = {
     cacheService.set(cacheKey, result);
     return result;
   },
-
-  // ... (остальные методы без изменений)
 };
