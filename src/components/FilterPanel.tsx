@@ -62,14 +62,14 @@ const SeasonPopover = ({ season, currentGender, currentSeason, selectedCategory,
 // #endregion
 
 const FilterPanel = (props: FilterPanelProps) => {
-    const { currentGender, currentSeason, selectedCategory, genders, seasons, categories, onFilterChange } = props;
+    const { currentGender, currentSeason, selectedCategory, genders, seasons, onFilterChange } = props;
     const isMobile = !!onFilterChange;
 
     if (!currentGender || !genders) return null;
     
     const allSeasonsInitial = ['all', ...seasons];
 
-    // --- МОБИЛЬНАЯ ВЕРСИЯ (НОВАЯ ЛОГИКА) --- //
+    // --- МОБИЛЬНАЯ ВЕРСИЯ (ИСПРАВЛЕНО) --- //
     if (isMobile) {
         const navigate = useNavigate();
         
@@ -79,8 +79,8 @@ const FilterPanel = (props: FilterPanelProps) => {
             category: selectedCategory,
         });
 
-        const [panelCategories, setPanelCategories] = useState<Category[]>(categories);
-        const [isPanelDataLoading, setIsPanelDataLoading] = useState(false);
+        const [panelCategories, setPanelCategories] = useState<Category[]>([]);
+        const [isPanelDataLoading, setIsPanelDataLoading] = useState(true);
 
         useEffect(() => {
             const fetchPanelData = async () => {
@@ -88,11 +88,13 @@ const FilterPanel = (props: FilterPanelProps) => {
 
                 setIsPanelDataLoading(true);
 
+                // --- ИСПРАВЛЕННЫЙ ЗАПРОС ---
                 let productsQuery = supabase
                     .from('products')
-                    .select('category_id')
+                    .select('category_id, variants!inner(stock)') // Выбираем варианты для фильтрации
                     .not('category_id', 'is', null)
-                    .eq('gender', selection.gender);
+                    .eq('gender', selection.gender)
+                    .gt('variants.stock', 0); // <-- ГЛАВНОЕ ИЗМЕНЕНИЕ: проверяем наличие на складе
 
                 if (selection.season && selection.season !== 'all') {
                     productsQuery = productsQuery.eq('season', selection.season);
@@ -124,19 +126,19 @@ const FilterPanel = (props: FilterPanelProps) => {
                 setIsPanelDataLoading(false);
             };
 
-            // Запускаем, только если выбор в панели отличается от того, что в URL
-            if (selection.gender !== currentGender || selection.season !== currentSeason) {
-                 fetchPanelData();
-            }
-        }, [selection.gender, selection.season, currentGender, currentSeason]);
+            fetchPanelData();
+
+        }, [selection.gender, selection.season]);
 
 
         const handleGenderSelect = (genderId: string) => {
+            // Сбрасываем и категорию, и сезон при смене пола
             setSelection({ gender: genderId, season: 'all', category: null });
         };
 
         const handleSeasonSelect = (season: string) => {
             if (selection.season === season) return;
+             // Сбрасываем категорию при смене сезона
             setSelection({ ...selection, season: season, category: null });
         };
 
@@ -191,9 +193,11 @@ const FilterPanel = (props: FilterPanelProps) => {
                         </div>
                     </div>
 
-                    <div className={`mt-6 transition-opacity duration-300 ${isPanelDataLoading ? 'opacity-50' : 'opacity-100'}`}>
+                    <div className="mt-6">
                         <h4 className="font-semibold text-gray-800 px-3 pb-2">Категории</h4>
-                        {panelCategories.length > 0 ? (
+                        {isPanelDataLoading ? (
+                             <div className="text-center py-4 text-gray-500 text-sm">Загрузка...</div>
+                        ) : panelCategories.length > 0 ? (
                             <div className="grid grid-cols-2 gap-1">
                                 <button onClick={() => handleCategorySelect(null)} className={`block w-full text-left col-span-2 px-3 py-2 rounded-md text-sm ${!selection.category ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
                                     Все категории
@@ -223,6 +227,8 @@ const FilterPanel = (props: FilterPanelProps) => {
     }
 
     // --- ДЕСКТОПНАЯ ВЕРСИЯ (БЕЗ ИЗМЕНЕНИЙ) --- //
+    // ... (rest of the component is unchanged)
+    const { categories: desktopCategories } = props;
     return (
         <div className="flex items-center justify-between w-full h-16"> 
             <div className="bg-gray-100 p-1 rounded-full flex items-center space-x-1">
@@ -243,7 +249,7 @@ const FilterPanel = (props: FilterPanelProps) => {
                         currentGender={currentGender}
                         currentSeason={currentSeason}
                         selectedCategory={selectedCategory}
-                        categories={categories}
+                        categories={desktopCategories}
                          />
                 ))}
             </div>
