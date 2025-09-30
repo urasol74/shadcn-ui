@@ -6,20 +6,17 @@ import { supabase } from '@/lib/supabase';
 import { useIsProduct } from '@/hooks/useIsProduct';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { ProductViewInline } from '@/components/ProductViewInline';
-import ProductCard from '@/components/ProductCard'; // <-- 1. ИМПОРТИРУЕМ НАШ НОВЫЙ КОМПОНЕНТ
+import ProductCard from '@/components/ProductCard';
+import FilterPanel from '@/components/FilterPanel'; // 1. ИМПОРТИРУЕМ НОВЫЙ КОМПОНЕНТ
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from 'lucide-react';
 
-interface Category {
-    id: number;
-    name: string;
-}
 
 export default function GenderSeasonPage() {
     const { season, gender, categoryId } = useParams();
     const navigate = useNavigate();
 
-    const decodedSeason = season ? decodeURIComponent(season) : null;
+    const decodedSeason = season ? decodeURIComponent(season) : 'all';
     
     const { isProduct, productData } = useIsProduct(decodedSeason, categoryId);
     const { seasons, categories, loading: catalogLoading } = useCatalogData(gender, decodedSeason, isProduct);
@@ -43,7 +40,7 @@ export default function GenderSeasonPage() {
         }
     }, [categories, categoryId, catalogLoading, navigate, gender, decodedSeason]);
 
-    // Эффект для загрузки товаров (остается без изменений)
+    // Эффект для загрузки товаров
     useEffect(() => {
         if (isProduct === true || !gender || isProduct === null) {
             setProductsLoading(false);
@@ -130,47 +127,14 @@ export default function GenderSeasonPage() {
         { id: 'хлопч', name: 'Мальчик' }, { id: 'дiвч', name: 'Девочка' }
     ].filter(g => g.id !== gender);
 
-    const getSeasonLink = (seasonName: string) => categoryId ? 
-        `/gender/${gender}/season/${encodeURIComponent(seasonName)}/category/${categoryId}` : 
-        `/gender/${gender}/season/${encodeURIComponent(seasonName)}`;
-
-    const getCategoryLink = (catId: string) => (decodedSeason && decodedSeason !== 'all') ? 
-        `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}/category/${catId}` :
-        `/gender/${gender}/season/all/category/${catId}`;
-
-    const getAllCategoriesLink = () => (decodedSeason && decodedSeason !== 'all') ?
-         `/gender/${gender}/season/${encodeURIComponent(decodedSeason)}` :
-         `/gender/${gender}/season/all`;
-
-    const FilterPanel = () => (
-        <div className="flex flex-col gap-4">
-            <div>
-                <h3 className="font-semibold mb-2">Сезоны</h3>
-                <div className="flex flex-col gap-2 items-start">
-                    <Link to={`/gender/${gender}/season/all`} className={`w-full text-left px-3 py-1 rounded-md text-sm ${!decodedSeason || decodedSeason === 'all' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>Все сезоны</Link>
-                    {seasons.map((seasonName) => (
-                        <Link key={seasonName} to={getSeasonLink(seasonName)} className={`w-full text-left px-3 py-1 rounded-md text-sm ${decodedSeason === seasonName ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>{seasonName}</Link>
-                    ))}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-semibold mb-2">Категории</h3>
-                <div className="flex flex-col gap-2 items-start">
-                    <Link to={getAllCategoriesLink()} className={`w-full text-left px-3 py-1 rounded-md text-sm ${!selectedCategory ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>Все категории</Link>
-                    {categories.map((category: Category) => (
-                        <Link key={category.id} to={getCategoryLink(String(category.id))} className={`w-full text-left px-3 py-1 rounded-md text-sm ${String(selectedCategory) === String(category.id) ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`} onClick={() => setIsSheetOpen(false)}>{category.name}</Link>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
+    // 2. УДАЛЯЕМ СТАРУЮ, втроенную реализацию FilterPanel
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
             
-            <div className="bg-white border-b">
-                <div className="container mx-auto px-4 py-6">
+            <div className="bg-white border-b sticky top-0 z-20">
+                <div className="container mx-auto px-4 py-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <h1 className="text-3xl font-bold text-gray-900">
                             {getGenderTitle(gender || '')}
@@ -182,6 +146,7 @@ export default function GenderSeasonPage() {
                         </div>
                     </div>
                     
+                    {/* 3. ИСПОЛЬЗУЕМ FilterPanel ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */}
                     <div className="md:hidden mt-4">
                         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                             <SheetTrigger asChild>
@@ -192,14 +157,28 @@ export default function GenderSeasonPage() {
                                     <SheetTitle>Фильтры</SheetTitle>
                                 </SheetHeader>
                                 <div className="py-4">
-                                    <FilterPanel />
+                                    <FilterPanel 
+                                        gender={gender}
+                                        decodedSeason={decodedSeason}
+                                        selectedCategory={selectedCategory}
+                                        seasons={seasons}
+                                        categories={categories}
+                                        onFilterChange={() => setIsSheetOpen(false)}
+                                    />
                                 </div>
                             </SheetContent>
                         </Sheet>
                     </div>
                     
-                    <div className="hidden md:block mt-4"> 
-                        {/* ... код фильтров остается без изменений ... */}
+                    {/* 4. ИСПОЛЬЗУЕМ FilterPanel ДЛЯ ДЕСКТОПА (ВОССТАНОВЛЕНО) */}
+                    <div className="hidden md:block mt-6 pt-4 border-t"> 
+                        <FilterPanel 
+                            gender={gender}
+                            decodedSeason={decodedSeason}
+                            selectedCategory={selectedCategory}
+                            seasons={seasons}
+                            categories={categories}
+                        />
                     </div>
                 </div>
             </div>
@@ -210,10 +189,8 @@ export default function GenderSeasonPage() {
                 ) : products.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">Товары не найдены</div>
                 ) : (
-                    // 2. ЗАМЕНЯЕМ СТАРЫЙ КОД НА ИСПОЛЬЗОВАНИЕ ProductCard
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {products.map((product) => (
-                            // Передаем каждый товар в наш новый, чистый компонент
                             <ProductCard key={`${product.product_id}-${product.sale_price}`} product={product} />
                         ))}
                     </div>
