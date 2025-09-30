@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import Logo from './Logo';
 
 interface CartItem {
   quantity: number;
@@ -87,15 +88,7 @@ const Header = () => {
         <div className="container mx-auto px-2 sm:px-4 py-3">
           <div className="flex items-center justify-between">
             
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-xl">B</span>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-green-600">BENETTON</h1>
-                <p className="text-xs text-gray-500">Одесса</p>
-              </div>
-            </Link>
+            <Logo />
 
             <div className="flex-1 w-full max-w-lg mx-2 sm:mx-4">
               <div className="hidden md:block">
