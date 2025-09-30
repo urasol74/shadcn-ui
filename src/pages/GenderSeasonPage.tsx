@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { ProductViewInline } from '@/components/ProductViewInline';
 import ProductCard from '@/components/ProductCard';
 import FilterPanel from '@/components/FilterPanel';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from 'lucide-react';
+import { Menu, ArrowLeft, Home } from 'lucide-react';
 
 export default function GenderSeasonPage() {
     const { season, gender, categoryId } = useParams();
@@ -118,6 +118,20 @@ export default function GenderSeasonPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
+            <div className="container mx-auto px-4 pt-8">
+                 <div className="flex items-center gap-4 mb-6">
+                    <Button variant="outline" onClick={() => navigate(-1)}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Назад
+                    </Button>
+                    <Link to="/">
+                        <Button variant="outline">
+                            <Home className="h-4 w-4 mr-2" />
+                            На главную
+                        </Button>
+                    </Link>
+                </div>
+            </div>
             
             <div className="bg-white border-b sticky top-0 z-20">
                 <div className="container mx-auto px-4">
