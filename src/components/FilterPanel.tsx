@@ -68,7 +68,7 @@ const FilterPanel = (props: FilterPanelProps) => {
     
     const allSeasons = ['all', ...seasons];
 
-    // --- МОБИЛЬНАЯ ВЕРСИЯ (НОВАЯ ЛОГИКА) --- //
+    // --- МОБИЛЬНАЯ ВЕРСИЯ (ИСПРАВЛЕНО) --- //
     if (isMobile) {
         const navigate = useNavigate();
         
@@ -104,9 +104,9 @@ const FilterPanel = (props: FilterPanelProps) => {
         };
 
         return (
-            <div className="flex flex-col h-full">
-                <div className="flex-1 overflow-y-auto">
-                    <div className="p-4">
+            <div className="flex flex-col flex-1 min-h-0 pt-4">
+                <div className="flex-1 overflow-y-auto px-4">
+                    <div className="">
                         <h4 className="font-semibold text-gray-800 px-3 pb-3">Пол</h4>
                         <div className="bg-gray-100 p-1 rounded-full grid grid-cols-4 gap-1">
                             {genders.map(gender => (
@@ -120,7 +120,7 @@ const FilterPanel = (props: FilterPanelProps) => {
                         </div>
                     </div>
 
-                    <div className="p-4 pt-0">
+                    <div className="mt-6">
                         <h4 className="font-semibold text-gray-800 px-3 pb-2">Сезоны</h4>
                         <div className="flex flex-col space-y-1">
                             {allSeasons.map(season => {
@@ -139,7 +139,7 @@ const FilterPanel = (props: FilterPanelProps) => {
                     </div>
 
                     {categories.length > 0 && (
-                        <div className="p-4 pt-0">
+                        <div className="mt-6">
                             <h4 className="font-semibold text-gray-800 px-3 pb-2">Категории</h4>
                             <div className="grid grid-cols-2 gap-1">
                                 <button

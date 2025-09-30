@@ -26,7 +26,6 @@ export default function GenderSeasonPage() {
     
     const selectedCategory = categoryId || null;
 
-    // Эффект для проверки существования категории при смене сезона
     useEffect(() => {
         if (!catalogLoading && categoryId && categories.length > 0) {
             const categoryExistsInNewSeason = categories.some(cat => String(cat.id) === String(categoryId));
@@ -39,7 +38,6 @@ export default function GenderSeasonPage() {
         }
     }, [categories, categoryId, catalogLoading, navigate, gender, decodedSeason]);
 
-    // Эффект для загрузки товаров
     useEffect(() => {
         if (isProduct === true || !gender || isProduct === null) {
             setProductsLoading(false);
@@ -48,7 +46,6 @@ export default function GenderSeasonPage() {
         
         const loadProducts = async () => {
             setProductsLoading(true);
-            // ... (rest of the logic is unchanged)
             try {
                 let query = supabase
                     .from('products')
@@ -141,21 +138,19 @@ export default function GenderSeasonPage() {
                             <SheetTrigger asChild>
                                 <Button variant="outline" className="w-full flex items-center gap-2"><Menu size={16} /> Навигация</Button>
                             </SheetTrigger>
-                            <SheetContent side="left">
+                            <SheetContent side="left" className="flex flex-col">
                                 <SheetHeader>
                                     <SheetTitle>Навигация</SheetTitle>
                                 </SheetHeader>
-                                <div className="py-4">
-                                    <FilterPanel 
-                                        currentGender={gender!}
-                                        currentSeason={decodedSeason}
-                                        genders={genderOptions}
-                                        seasons={seasons}
-                                        categories={categories}
-                                        selectedCategory={selectedCategory}
-                                        onFilterChange={() => setIsSheetOpen(false)}
-                                    />
-                                </div>
+                                <FilterPanel 
+                                    currentGender={gender!}
+                                    currentSeason={decodedSeason}
+                                    genders={genderOptions}
+                                    seasons={seasons}
+                                    categories={categories}
+                                    selectedCategory={selectedCategory}
+                                    onFilterChange={() => setIsSheetOpen(false)}
+                                />
                             </SheetContent>
                         </Sheet>
                     </div>
