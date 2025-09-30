@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 
 // --- ТИПЫ --- //
 interface Category {
@@ -66,9 +67,9 @@ const FilterPanel = (props: FilterPanelProps) => {
 
     if (!currentGender || !genders) return null;
     
-    const allSeasons = ['all', ...seasons];
+    const allSeasonsInitial = ['all', ...seasons];
 
-    // --- МОБИЛЬНАЯ ВЕРСИЯ (ИСПРАВЛЕНО) --- //
+    // --- МОБИЛЬНАЯ ВЕРСИЯ (НОВАЯ ЛОГИКА) --- //
     if (isMobile) {
         const navigate = useNavigate();
         
@@ -77,6 +78,58 @@ const FilterPanel = (props: FilterPanelProps) => {
             season: currentSeason,
             category: selectedCategory,
         });
+
+        const [panelCategories, setPanelCategories] = useState<Category[]>(categories);
+        const [isPanelDataLoading, setIsPanelDataLoading] = useState(false);
+
+        useEffect(() => {
+            const fetchPanelData = async () => {
+                if (!selection.gender) return;
+
+                setIsPanelDataLoading(true);
+
+                let productsQuery = supabase
+                    .from('products')
+                    .select('category_id')
+                    .not('category_id', 'is', null)
+                    .eq('gender', selection.gender);
+
+                if (selection.season && selection.season !== 'all') {
+                    productsQuery = productsQuery.eq('season', selection.season);
+                }
+
+                const { data: productsData, error: productsError } = await productsQuery;
+
+                if (productsError || !productsData) {
+                    setPanelCategories([]);
+                    setIsPanelDataLoading(false);
+                    return;
+                }
+
+                const categoryIds = [...new Set(productsData.map(p => p.category_id))];
+
+                if (categoryIds.length === 0) {
+                    setPanelCategories([]);
+                    setIsPanelDataLoading(false);
+                    return;
+                }
+
+                const { data: categoriesData, error: categoriesError } = await supabase
+                    .from('categories')
+                    .select('id, name')
+                    .in('id', categoryIds)
+                    .order('name', { ascending: true });
+
+                setPanelCategories(categoriesData || []);
+                setIsPanelDataLoading(false);
+            };
+
+            // Запускаем, только если выбор в панели отличается от того, что в URL
+            if (selection.gender !== currentGender || selection.season !== currentSeason) {
+                 fetchPanelData();
+            }
+        }, [selection.gender, selection.season, currentGender, currentSeason]);
+
 
         const handleGenderSelect = (genderId: string) => {
             setSelection({ gender: genderId, season: 'all', category: null });
@@ -123,7 +176,7 @@ const FilterPanel = (props: FilterPanelProps) => {
                     <div className="mt-6">
                         <h4 className="font-semibold text-gray-800 px-3 pb-2">Сезоны</h4>
                         <div className="flex flex-col space-y-1">
-                            {allSeasons.map(season => {
+                            {allSeasonsInitial.map(season => {
                                 const seasonDisplayName = season === 'all' ? 'Все сезоны' : season;
                                 const isActive = (selection.season === season) || (season === 'all' && !selection.season);
                                 return (
@@ -138,16 +191,14 @@ const FilterPanel = (props: FilterPanelProps) => {
                         </div>
                     </div>
 
-                    {categories.length > 0 && (
-                        <div className="mt-6">
-                            <h4 className="font-semibold text-gray-800 px-3 pb-2">Категории</h4>
+                    <div className={`mt-6 transition-opacity duration-300 ${isPanelDataLoading ? 'opacity-50' : 'opacity-100'}`}>
+                        <h4 className="font-semibold text-gray-800 px-3 pb-2">Категории</h4>
+                        {panelCategories.length > 0 ? (
                             <div className="grid grid-cols-2 gap-1">
-                                <button
-                                    onClick={() => handleCategorySelect(null)}
-                                    className={`block w-full text-left col-span-2 px-3 py-2 rounded-md text-sm ${!selection.category ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
+                                <button onClick={() => handleCategorySelect(null)} className={`block w-full text-left col-span-2 px-3 py-2 rounded-md text-sm ${!selection.category ? 'bg-gray-100 text-gray-900 font-semibold' : 'text-gray-600'}`}>
                                     Все категории
                                 </button>
-                                {categories.map(category => (
+                                {panelCategories.map(category => (
                                     <button
                                         key={category.id}
                                         onClick={() => handleCategorySelect(String(category.id))}
@@ -156,8 +207,10 @@ const FilterPanel = (props: FilterPanelProps) => {
                                     </button>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                             <div className="text-center py-4 text-gray-500 text-sm">Нет категорий</div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="p-4 border-t bg-white">
@@ -183,7 +236,7 @@ const FilterPanel = (props: FilterPanelProps) => {
                 ))}
             </div>
             <div className="flex items-center space-x-3">
-                {allSeasons.map(season => (
+                {allSeasonsInitial.map(season => (
                     <SeasonPopover 
                         key={season} 
                         season={season} 
@@ -191,7 +244,7 @@ const FilterPanel = (props: FilterPanelProps) => {
                         currentSeason={currentSeason}
                         selectedCategory={selectedCategory}
                         categories={categories}
-                        onLinkClick={onFilterChange} />
+                         />
                 ))}
             </div>
         </div>
