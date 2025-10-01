@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { QuickOrderModal } from '@/components/QuickOrderModal';
 import ImageProductPage from '@/components/ImageProductPage';
 import InfoProductPage from '@/components/InfoProductPage';
+import { RecommendedFromCategory } from '@/components/RecommendedFromCategory';
 import type { Product, Variant, CartItem, User } from '@/types/types';
 
 const SUPABASE_STORAGE_URL = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site';
@@ -211,6 +212,12 @@ export default function ProductPage() {
                     />
                 </div>
             </div>
+             {product && (
+                <RecommendedFromCategory 
+                    categoryId={product.category_id} 
+                    currentProductId={product.id} 
+                />
+            )}
             <QuickOrderModal 
                 isOpen={isQuickOrderModalOpen}
                 onClose={() => setIsQuickOrderModalOpen(false)}
