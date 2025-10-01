@@ -126,7 +126,8 @@ export default function ProductPage() {
     };
 
     const handleAddToCart = () => {
-        if (!user) {
+        const typedUser = user as User | null;
+        if (!typedUser) {
             toast.info("Пожалуйста, войдите в аккаунт или зарегистрируйтесь.", {
                 action: { label: "Войти", onClick: () => navigate('/login') },
             });
@@ -144,7 +145,7 @@ export default function ProductPage() {
         const cart: CartItem[] = JSON.parse(localStorage.getItem('cart') || '[]');
         const existingItemIndex = cart.findIndex(item => item.id === selectedVariant.id);
         
-        const userSaleAmount = (user.user_metadata?.sale || 0) / 100;
+        const userSaleAmount = (typedUser.user_metadata?.sale || 0) / 100;
         let priceForCart = selectedVariant.discount > 0 ? selectedVariant.sale_price : selectedVariant.purchase_price * (1 - userSaleAmount);
 
         if (existingItemIndex !== -1) {
@@ -188,6 +189,13 @@ export default function ProductPage() {
         );
     }
 
+    // Адаптируем объект user под формат, который ожидает QuickOrderModal
+    const quickOrderUser = user ? {
+        name: (user as any).user_metadata?.name || '',
+        tel: (user as any).user_metadata?.tel || '',
+        sale: (user as any).user_metadata?.sale || 0,
+    } : null;
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
@@ -203,7 +211,7 @@ export default function ProductPage() {
                         product={product}
                         selectedVariant={selectedVariant}
                         variantsByColor={variantsByColor}
-                        user={user} 
+                        user={user as User | null}
                         isFavorite={isFavorite}
                         onToggleFavorite={handleToggleFavorite}
                         onSelectVariant={setSelectedVariant}
@@ -222,9 +230,19 @@ export default function ProductPage() {
             <QuickOrderModal 
                 isOpen={isQuickOrderModalOpen}
                 onClose={() => setIsQuickOrderModalOpen(false)}
-                product={product}
-                selectedVariant={selectedVariant}
-                user={user}
+                product={product ? { 
+                    name: product.name, 
+                    article: product.article, 
+                    image: product.image 
+                } : null}
+                selectedVariant={selectedVariant ? { 
+                    color: selectedVariant.color, 
+                    size: selectedVariant.size, 
+                    purchase_price: selectedVariant.purchase_price, 
+                    sale_price: selectedVariant.sale_price, 
+                    discount: selectedVariant.discount 
+                } : null}
+                user={quickOrderUser}
             />
         </div>
     );
