@@ -319,8 +319,8 @@ export default function ProductPage() {
                     </Link>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-                    <div>
+                <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
+                    <div className="md:w-1/2">
                          <Carousel className="w-full max-w-xl mx-auto" setApi={setApi}>
                             <CarouselContent>
                                 {productImages.map((src, index) => (
@@ -358,7 +358,7 @@ export default function ProductPage() {
                         </div>
                     </div>
 
-                    <div>
+                    <div className="md:w-1/2">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h1 className="text-2xl lg:text-3xl font-bold">{product.name}</h1>
@@ -420,9 +420,9 @@ export default function ProductPage() {
                             </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3 mt-8">
-                            <Button size="lg" className="flex-1 bg-gray-800 hover:bg-gray-900" onClick={handleAddToCart} disabled={!inStock}>Купить</Button>
-                            <Button size="lg" variant="outline" className="flex-1" onClick={handleQuickOrder} disabled={!inStock}>Заказать быстро</Button>
+                        <div className="flex flex-col gap-3 mt-8">
+                            <Button size="lg" className="w-full bg-gray-800 hover:bg-gray-900" onClick={handleAddToCart} disabled={!inStock}>Купить</Button>
+                            <Button size="lg" variant="outline" className="w-full" onClick={handleQuickOrder} disabled={!inStock}>Заказать быстро</Button>
                         </div>
                         
                         <div className="mt-8 text-sm text-gray-600 space-y-1">
