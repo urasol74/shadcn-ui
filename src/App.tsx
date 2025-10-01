@@ -1,7 +1,7 @@
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Index from './pages/Index';
 import NotFound from './pages/NotFound';
 import CategoryPage from './pages/CategoryPage';
@@ -17,17 +17,20 @@ import OrderSuccessPage from './pages/OrderSuccessPage';
 import AdminPage from './pages/AdminPage';
 import AdminProductsPage from './pages/AdminProductsPage';
 import UserOrdersPage from './pages/UserOrdersPage';
-import QuickOrdersAdminPage from './pages/QuickOrdersAdminPage'; // Импорт новой страницы
+import QuickOrdersAdminPage from './pages/QuickOrdersAdminPage';
 import React from 'react';
+import Footer from './components/Footer'; // Импортируем наш новый футер
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
+// Создаем обертку, которая будет решать, показывать ли футер
+const AppWrapper = () => {
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
+
+  return (
+    <div className="flex min-h-screen flex-col">
+        <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/registration" element={<RegistrationPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -45,19 +48,26 @@ const App = () => (
             <Route path="/admin/user/:id" element={<UserOrdersPage />} />
             <Route path="/admin/quick-orders" element={<QuickOrdersAdminPage />} />
 
-            {/* Legacy URL structure support */}
-            <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />
+            {/* Legacy & Combined Routes */}
             <Route path="/gender/:gender/season/:season" element={<GenderSeasonPage />} />
+            <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />
+            <Route path="/gender/:gender/season/:season/product/:article" element={<ProductPage />} /> 
             <Route path="/gender/:gender" element={<Navigate to="/gender/:gender/season/all" replace />} />
             <Route path="/category/:gender/:categoryId" element={<CategoryPage />} />
             
-            {/* Deprecated product routes - can be removed later */}
-            <Route path="/gender/:gender/season/:season/category/:categoryId/:article" element={<ProductPage />} />
-            <Route path="/gender/:gender/:article" element={<ProductPage />} />
-            <Route path="/category/:gender/:categoryId/:article" element={<ProductPage />} />
-            
             <Route path="*" element={<NotFound />} />
-          </Routes>
+        </Routes>
+        {!isAdminPage && <Footer />} {/* Показываем футер только если это не админ-панель */}
+    </div>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AppWrapper />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
