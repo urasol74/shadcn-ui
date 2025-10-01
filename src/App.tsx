@@ -19,11 +19,15 @@ import AdminProductsPage from './pages/AdminProductsPage';
 import UserOrdersPage from './pages/UserOrdersPage';
 import QuickOrdersAdminPage from './pages/QuickOrdersAdminPage';
 import React from 'react';
-import Footer from './components/Footer'; // Импортируем наш новый футер
+import Footer from './components/Footer';
+
+// Импорт новых страниц
+import ContactsPage from './pages/ContactsPage';
+import ReturnsPage from './pages/ReturnsPage';
+import ShippingPage from './pages/ShippingPage';
 
 const queryClient = new QueryClient();
 
-// Создаем обертку, которая будет решать, показывать ли футер
 const AppWrapper = () => {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
@@ -31,6 +35,7 @@ const AppWrapper = () => {
   return (
     <div className="flex min-h-screen flex-col">
         <Routes>
+            {/* Основные страницы */}
             <Route path="/" element={<Index />} />
             <Route path="/registration" element={<RegistrationPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -40,6 +45,11 @@ const AppWrapper = () => {
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/product/:id" element={<ProductPage />} />
+
+            {/* Новые информационные страницы */}
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/returns" element={<ReturnsPage />} />
+            <Route path="/shipping" element={<ShippingPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
@@ -51,13 +61,14 @@ const AppWrapper = () => {
             {/* Legacy & Combined Routes */}
             <Route path="/gender/:gender/season/:season" element={<GenderSeasonPage />} />
             <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />
-            <Route path="/gender/:gender/season/:season/product/:article" element={<ProductPage />} /> 
+            <Route path="/gender/:gender/season/:season/product/:article" element={<ProductPage />} />
+            <Route path="/gender/:gender/season/:season/category/:categoryId/:article" element={<ProductPage />} />
             <Route path="/gender/:gender" element={<Navigate to="/gender/:gender/season/all" replace />} />
             <Route path="/category/:gender/:categoryId" element={<CategoryPage />} />
             
             <Route path="*" element={<NotFound />} />
         </Routes>
-        {!isAdminPage && <Footer />} {/* Показываем футер только если это не админ-панель */}
+        {!isAdminPage && <Footer />} 
     </div>
   );
 };
