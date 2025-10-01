@@ -1,6 +1,5 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import {
   Carousel,
@@ -13,6 +12,7 @@ import ProductCard from '@/components/ProductCard';
 import type { Product } from '@/types/types';
 
 interface RecommendedFromCategoryProps {
+  gender: string;
   categoryId: number;
   currentProductId: number;
 }
@@ -27,48 +27,75 @@ const shuffleArray = (array: any[]) => {
   return array;
 };
 
-export const RecommendedFromCategory = ({ categoryId, currentProductId }: RecommendedFromCategoryProps) => {
+export const RecommendedFromCategory = ({ gender, categoryId, currentProductId }: RecommendedFromCategoryProps) => {
     const [products, setProducts] = useState<any[]>([]);
+    const [categoryName, setCategoryName] = useState('');
     const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
 
     const fetchProducts = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase
+
+        // First, try to fetch by gender and category
+        let { data, error } = await supabase
             .from('products')
-            .select('id, article, name, gender, season, category_id, image, variants!inner(purchase_price, sale_price, discount, stock)')
+            .select('id, article, name, gender, season, category_id, image, categories(name), variants!inner(purchase_price, sale_price, discount, stock)')
+            .eq('gender', gender)
             .eq('category_id', categoryId)
             .neq('id', currentProductId)
             .gt('variants.stock', 0)
             .limit(10);
 
+        // If no results, fall back to fetching by category only
+        if (!error && data && data.length === 0) {
+            const fallbackResult = await supabase
+                .from('products')
+                .select('id, article, name, gender, season, category_id, image, categories(name), variants!inner(purchase_price, sale_price, discount, stock)')
+                .eq('category_id', categoryId)
+                .neq('id', currentProductId)
+                .gt('variants.stock', 0)
+                .limit(10);
+
+            if (fallbackResult.data) {
+                data = fallbackResult.data;
+                error = fallbackResult.error;
+            }
+        }
+
         if (error) {
             console.error('Error fetching recommended products:', error);
             setProducts([]);
-        } else if (data) {
-          const processedProducts = data.map(p => ({
-            ...p,
-            product_id: p.id,
-            purchase_price: p.variants[0]?.purchase_price,
-            sale_price: p.variants[0]?.sale_price,
-            discount: p.variants[0]?.discount,
-          }));
-          const uniqueProducts = Array.from(new Map(processedProducts.map(p => [p.id, p])).values());
-          setProducts(shuffleArray(uniqueProducts));
+        } else if (data && data.length > 0) {
+            const productData = data as unknown as Product[];
+            const name = productData[0]?.categories?.name;
+            if (name) {
+                setCategoryName(name);
+            }
+
+            const processedProducts = productData.map(p => ({
+                ...p,
+                product_id: p.id,
+                purchase_price: p.variants[0]?.purchase_price,
+                sale_price: p.variants[0]?.sale_price,
+                discount: p.variants[0]?.discount,
+            }));
+            const uniqueProducts = Array.from(new Map(processedProducts.map(p => [p.id, p])).values());
+            setProducts(shuffleArray(uniqueProducts));
+        } else {
+            setProducts([]);
         }
         setLoading(false);
-    }, [categoryId, currentProductId]);
+    }, [gender, categoryId, currentProductId]);
 
     useEffect(() => {
-        if (categoryId && currentProductId) {
+        if (gender && categoryId && currentProductId) {
             fetchProducts();
         }
-    }, [fetchProducts, categoryId, currentProductId]);
+    }, [fetchProducts, gender, categoryId, currentProductId]);
 
     if (loading) {
         return <div className="text-center py-8">Загрузка рекомендуемых товаров...</div>;
     }
-    
+
     if (products.length === 0) {
         return null;
     }
@@ -76,10 +103,12 @@ export const RecommendedFromCategory = ({ categoryId, currentProductId }: Recomm
     return (
         <section className="py-12 bg-gray-50">
             <div className="container mx-auto px-4">
-                <h2 className="text-3xl font-bold text-center mb-8">Рекомендуем из этой категории</h2>
-                <Carousel 
-                    opts={{ 
-                        align: "start", 
+                <h2 className="text-3xl font-bold text-center mb-8">
+                    {categoryName ? `Рекомендуем из категории "${categoryName}"` : 'Рекомендуем из этой категории'}
+                </h2>
+                <Carousel
+                    opts={{
+                        align: "start",
                         loop: products.length > 4,
                     }}
                     className="w-full"
@@ -88,7 +117,7 @@ export const RecommendedFromCategory = ({ categoryId, currentProductId }: Recomm
                         {products.map((product) => (
                             <CarouselItem key={product.id} className="md:basis-1/3 lg:basis-1/5">
                                 <div className="p-1 h-full">
-                                     <ProductCard product={product} />
+                                    <ProductCard product={product} />
                                 </div>
                             </CarouselItem>
                         ))}

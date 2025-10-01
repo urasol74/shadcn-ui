@@ -214,6 +214,7 @@ export default function ProductPage() {
             </div>
              {product && (
                 <RecommendedFromCategory 
+                    gender={product.gender}
                     categoryId={product.category_id} 
                     currentProductId={product.id} 
                 />
