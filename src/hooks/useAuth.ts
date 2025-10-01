@@ -1,12 +1,5 @@
 import { useState, useEffect } from 'react';
-
-interface User {
-  [x: string]: string;
-  id: number;
-  name: string;
-  tel: string;
-  sale: number;
-}
+import type { User } from '@/types/types';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -17,12 +10,7 @@ export const useAuth = () => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        const userData = JSON.parse(storedUser);
-        // Преобразуем значение sale в число, если оно хранится как строка
-        if (typeof userData.sale === 'string') {
-          // Удаляем запятую и преобразуем в число
-          userData.sale = Number(userData.sale.replace(',', '.').replace(/[^0-9.]/g, ''));
-        }
+        const userData: User = JSON.parse(storedUser);
         setUser(userData);
       } catch (e) {
         console.error('Error parsing user data:', e);
