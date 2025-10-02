@@ -26,6 +26,8 @@ import Footer from './components/Footer';
 import ContactsPage from './pages/ContactsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ShippingPage from './pages/ShippingPage';
+import EditorPage from './pages/EditorPage'; // Импорт страницы редактора
+import ContentEditorPage from './pages/ContentEditorPage'; // Импорт страницы с редактором контента
 
 const queryClient = new QueryClient();
 
@@ -58,6 +60,8 @@ const AppWrapper = () => {
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/user/:id" element={<UserOrdersPage />} />
             <Route path="/admin/quick-orders" element={<QuickOrdersAdminPage />} />
+            <Route path="/admin/editor" element={<EditorPage />} />
+            <Route path="/admin/editor/:page_slug" element={<ContentEditorPage />} />
 
             {/* Legacy & Combined Routes */}
             <Route path="/gender/:gender/season/:season" element={<GenderSeasonPage />} />
