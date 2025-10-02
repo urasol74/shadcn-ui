@@ -1,5 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
-  ]
+  "framework": "vite",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build"
 }
