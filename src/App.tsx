@@ -70,6 +70,7 @@ const AppWrapper = () => {
             <Route path="*" element={<NotFound />} />
         </Routes>
         {!isAdminPage && <Footer />} 
+        <SpeedInsights />
     </div>
   );
 };
@@ -80,7 +81,6 @@ const App = () => (
       <Toaster />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AppWrapper />
-		<SpeedInsights/>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
