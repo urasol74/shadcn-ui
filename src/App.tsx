@@ -28,6 +28,7 @@ import ReturnsPage from './pages/ReturnsPage';
 import ShippingPage from './pages/ShippingPage';
 import EditorPage from './pages/EditorPage'; // Импорт страницы редактора
 import ContentEditorPage from './pages/ContentEditorPage'; // Импорт страницы с редактором контента
+import TestNovaPoshta from './pages/TestNovaPoshta'; // ИМПОРТ СТРАНИЦЫ ТЕСТА
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const AppWrapper = () => {
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/product/:id" element={<ProductPage />} />
+            <Route path="/novaposhta" element={<TestNovaPoshta />} /> {/* МАРШРУТ ДЛЯ СТРАНИЦЫ ТЕСТА */}
 
             {/* Новые информационные страницы */}
             <Route path="/contacts" element={<ContactsPage />} />
