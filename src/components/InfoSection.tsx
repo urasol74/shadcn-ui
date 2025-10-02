@@ -9,16 +9,16 @@ const InfoSection = () => {
     return (
         <section className="container mx-auto grid grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2">
             <div className="order-2 md:order-1">
-                <h2 className="mb-4 text-3xl font-bold" style={{ color: brandColors.darkGreen }}>A Story of Color</h2>
+                <h2 className="mb-4 text-3xl font-bold" style={{ color: brandColors.darkGreen }}>История, написанная цветом</h2>
                 <p className="mb-6 text-gray-600">
-                    Since 1965, United Colors of Benetton has woven a narrative of style that transcends borders. Our identity is built on vibrant colors, authentic fashion, and a commitment to a better future.
+                    С 1965 года United Colors of Benetton создает историю стиля, которая не знает границ. Наша идентичность построена на ярких цветах, аутентичной моде и стремлении к лучшему будущему. Мы верим в мир, где разнообразие — это ценность.
                 </p>
                 <a href="#" className="font-bold uppercase tracking-wider" style={{ color: brandColors.primaryGreen }}>
-                    Learn More &rarr;
+                    Узнать больше &rarr;
                 </a>
             </div>
             <div className="order-1 h-80 w-full overflow-hidden rounded-lg shadow-xl md:order-2">
-                 <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" alt="Model posing in Benetton fashion" className="h-full w-full object-cover" />
+                 <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" alt="Модель в одежде Benetton" className="h-full w-full object-cover" />
             </div>
         </section>
     );
