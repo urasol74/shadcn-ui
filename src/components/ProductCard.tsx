@@ -25,7 +25,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const productUrl = `/gender/${product.gender}/season/${encodeURIComponent(product.season)}/category/${product.category_id}/${product.article}`;
 
   const placeholderImage = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
-  const imageUrl = product.image ? `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${product.image}` : placeholderImage;
+  // --- ИСПРАВЛЕНИЕ ---
+  // 1. Сначала пытаемся использовать имя файла из колонки `image`, как вы и указали.
+  // 2. Если оно пустое, формируем имя файла из артикула в качестве запасного варианта.
+  const imageName = product.image || `${product.article}.webp`;
+  const imageUrl = `https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/${imageName}`;
+
 
   return (
     // Вся карточка - это единая ссылка
