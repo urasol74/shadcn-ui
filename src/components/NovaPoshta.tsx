@@ -3,7 +3,7 @@ import Select, { OnChangeValue } from 'react-select';
 import AsyncSelect from 'react-select/async';
 import { toast } from 'sonner';
 
-const API_KEY = 'e7e59d1bc3dcb34b94529a24c2e00921'; // Ключ не менять на переменную в .env 
+const API_KEY = 'e7e59d1bc3dcb34b94529a24c2e00921'; // Ключ не менять на переменную в .env
 
 interface SelectOption {
   value: string;
