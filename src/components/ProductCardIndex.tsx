@@ -93,12 +93,12 @@ const ProductCardIndex = () => {
             {loading ? (
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, index) => (
-                        <div key={index} className="rounded-lg bg-white shadow-lg animate-pulse">
-                            <div className="h-64 rounded-t-lg bg-gray-200"></div>
-                            <div className="p-6">
-                                <div className="h-6 w-3/4 rounded bg-gray-200"></div>
-                                <div className="mt-4 h-4 w-1/4 rounded bg-gray-200"></div>
-                            </div>
+                        <div key={index} className="group block overflow-hidden rounded-lg bg-white shadow-lg">
+                          <div className="aspect-w-1 aspect-h-1 w-full bg-gray-200"></div>
+                          <div className="p-6 min-h-[8rem]">
+                            <div className="h-6 w-3/4 rounded bg-gray-200 animate-pulse"></div>
+                            <div className="mt-4 h-4 w-1/4 rounded bg-gray-200 animate-pulse"></div>
+                          </div>
                         </div>
                     ))}
                 </div>

@@ -21,6 +21,7 @@ import UserOrdersPage from './pages/UserOrdersPage';
 import QuickOrdersAdminPage from './pages/QuickOrdersAdminPage';
 import React from 'react';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 
 // Импорт новых страниц
 import ContactsPage from './pages/ContactsPage';
@@ -38,6 +39,7 @@ const AppWrapper = () => {
 
   return (
     <div className="flex min-h-screen flex-col">
+        <ScrollToTop />
         <Routes>
             {/* Основные страницы */}
             <Route path="/" element={<Index />} />
