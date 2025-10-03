@@ -104,6 +104,8 @@ const ProductCardIndex = () => {
                             <img 
                                 src={`${SUPABASE_STORAGE_URL}/${product.image}`}
                                 alt={product.name}
+                                width="400"
+                                height="400"
                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 onError={({ currentTarget }) => {
                                     currentTarget.onerror = null; 
