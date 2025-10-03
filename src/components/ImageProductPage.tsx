@@ -20,11 +20,18 @@ export default function ImageProductPage({ productImages, productName }: ImagePr
   const [current, setCurrent] = useState(0);
   const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
   const [fullscreenImageUrl, setFullscreenImageUrl] = useState('');
+  
+  // Состояние для хранения только валидных, загрузившихся изображений
+  const [validImages, setValidImages] = useState<string[]>([]);
+
+  // При монтировании и при изменении productImages, мы инициализируем validImages
+  useEffect(() => {
+    // Мы предполагаем, что все изображения валидны изначально
+    setValidImages(productImages);
+  }, [productImages]);
 
   useEffect(() => {
-    if (!api) {
-      return;
-    }
+    if (!api) return;
     setCurrent(api.selectedScrollSnap());
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap());
@@ -36,10 +43,18 @@ export default function ImageProductPage({ productImages, productName }: ImagePr
     setIsFullscreenImageOpen(true);
   };
 
-  if (!productImages || productImages.length === 0) {
+  // Функция для обработки ошибок загрузки изображений
+  const handleImageError = (failedSrc: string) => {
+    // Удаляем "сломанную" ссылку из списка валидных изображений
+    setValidImages(prevImages => prevImages.filter(src => src !== failedSrc));
+  };
+
+  // Если после всех проверок не осталось валидных изображений
+  if (validImages.length === 0) {
     return (
         <div className="md:w-1/2 flex items-center justify-center bg-gray-100 rounded-lg aspect-[4/3]">
-            <p className="text-gray-500">Нет изображений</p>
+            {/* Показываем запасное изображение, если вообще ничего не загрузилось */}
+            <img src="https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp" alt="Изображение недоступно" className="max-w-full max-h-full object-contain" />
         </div>
     );
   }
@@ -48,17 +63,15 @@ export default function ImageProductPage({ productImages, productName }: ImagePr
     <div className="md:w-1/2">
       <Carousel className="w-full max-w-xl mx-auto" setApi={setApi}>
         <CarouselContent>
-          {productImages.map((src, index) => (
+          {validImages.map((src, index) => (
             <CarouselItem key={index} onClick={() => openFullscreenImage(src)}>
               <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer">
                 <img
                   src={src}
                   alt={`${productName} - изображение ${index + 1}`}
                   className="max-w-full max-h-full object-contain"
-                  onError={({ currentTarget }) => {
-                    currentTarget.onerror = null;
-                    currentTarget.src = 'https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/img-site/placeholder.webp';
-                  }}
+                  // Используем наш новый обработчик ошибок
+                  onError={() => handleImageError(src)}
                 />
               </div>
             </CarouselItem>
@@ -68,7 +81,7 @@ export default function ImageProductPage({ productImages, productName }: ImagePr
         <CarouselNext />
       </Carousel>
       <div className="flex justify-center gap-2 mt-4">
-        {productImages.map((src, index) => (
+        {validImages.map((src, index) => (
           <button
             key={index}
             onClick={() => api?.scrollTo(index)}
@@ -77,6 +90,8 @@ export default function ImageProductPage({ productImages, productName }: ImagePr
               src={src}
               alt={`Миниатюра ${index + 1}`}
               className="w-full h-full object-cover"
+              // Добавляем обработчик и сюда для консистентности, хотя он может и не понадобиться
+              onError={() => handleImageError(src)}
             />
           </button>
         ))}
