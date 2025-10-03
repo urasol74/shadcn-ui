@@ -35,6 +35,8 @@ export interface CartItem {
 
 // ИСПРАВЛЕННЫЙ ТИП USER
 export interface User {
+  sale: number;
+  phone: string;
   id: string;
   email?: string;
   // Это правильная структура для пользовательских данных из Supabase

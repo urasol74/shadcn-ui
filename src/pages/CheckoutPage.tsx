@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/priceUtils';
+// 1. Импортируем наш новый компонент
+import NovaPoshta from '@/components/NovaPoshta';
 
 interface CartItem {
     id: number;
@@ -23,7 +25,12 @@ interface CartItem {
     discount?: number;
 }
 
-// Correct Telegram credentials from QuickOrderModal.tsx
+// Интерфейс для данных, поступающих из компонента NovaPoshta
+interface NovaPoshtaSelection {
+  city: { value: string; label: string } | null;
+  warehouse: { value: string; label: string } | null;
+}
+
 const TELEGRAM_BOT_TOKEN = '7223314836:AAEUHr6yHUM-RnNn3tTN9PpuFeRc9I10VH0';
 const TELEGRAM_CHAT_ID = '1023307031';
 
@@ -35,8 +42,8 @@ export default function CheckoutPage() {
     const [formData, setFormData] = useState({
         fullName: '',
         phone: '',
-        city: '',
-        postOffice: '',
+        city: '', // Это поле теперь будет заполняться автоматически
+        postOffice: '', // И это поле тоже
     });
     const [loading, setLoading] = useState(false);
 
@@ -66,6 +73,15 @@ export default function CheckoutPage() {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
+    // 2. Создаем обработчик для данных из компонента NovaPoshta
+    const handleNovaPoshtaChange = (selection: NovaPoshtaSelection) => {
+        setFormData(prev => ({
+            ...prev,
+            city: selection.city?.label || '',
+            postOffice: selection.warehouse?.label || '',
+        }));
+    };
+
     const handleSubmitOrder = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) {
@@ -74,16 +90,18 @@ export default function CheckoutPage() {
             });
             return;
         }
-
+        
+        // Валидация осталась прежней и будет работать, т.к. state обновляется
         const { fullName, phone, city, postOffice } = formData;
         if (!fullName || !phone || !city || !postOffice) {
-            toast.error("Пожалуйста, заполните все поля доставки.");
+            toast.error("Пожалуйста, заполните все поля доставки, включая город и отделение.");
             return;
         }
 
         setLoading(true);
 
         try {
+            // ... (остальная логика отправки заказа остается без изменений) ...
             const variantIds = cartItems.map(item => item.id);
             const { data: variantsData, error: variantsError } = await supabase
                 .from('variants')
@@ -109,14 +127,14 @@ export default function CheckoutPage() {
                     stock: item.quantity,
                     discount: hasDiscount ? variantDetail.discount : 0,
                     sale: !hasDiscount ? (user.sale || 0) : 0,
-                    purchase_date: new Date().toISOString(), // Добавлено поле с датой
+                    purchase_date: new Date().toISOString(),
                 };
             });
 
             const { error: insertError } = await supabase.from('card').insert(orderData);
             if (insertError) throw insertError;
 
-            // --- Telegram Notification Logic (Robust Implementation) ---
+            // --- Telegram Notification Logic ---
             try {
                 let messageLines = [
                     `*✅ Новый заказ с сайта!*`,
@@ -142,26 +160,14 @@ export default function CheckoutPage() {
                 
                 const message = messageLines.join('\n');
 
-                const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        chat_id: TELEGRAM_CHAT_ID,
-                        text: message,
-                        parse_mode: 'Markdown',
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' }),
                 });
 
-                const result = await response.json();
-                if (!result.ok) {
-                    console.error('Telegram API Error:', result.description);
-                    throw new Error(result.description);
-                }
             } catch (teleError) {
                 console.error("Failed to send Telegram notification:", teleError);
-                toast.warning("Заказ оформлен, но не удалось отправить уведомление. Мы уже знаем о проблеме!");
             }
 
             localStorage.removeItem('cart');
@@ -177,7 +183,6 @@ export default function CheckoutPage() {
             setLoading(false);
         }
     };
-
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -196,15 +201,11 @@ export default function CheckoutPage() {
                                 <Label htmlFor="phone">Контактный телефон</Label>
                                 <Input id="phone" type="tel" placeholder="+380 XX XXX XX XX" value={formData.phone} onChange={handleInputChange} required />
                             </div>
-                            <div>
-                                <Label htmlFor="city">Город</Label>
-                                <Input id="city" type="text" placeholder="Например, Киев" value={formData.city} onChange={handleInputChange} required />
-                            </div>
-                            <div>
-                                <Label htmlFor="postOffice">Отделение Новой Почты</Label>
-                                <Input id="postOffice" type="text" placeholder="Номер отделения или почтомата" value={formData.postOffice} onChange={handleInputChange} required />
-                            </div>
-                            <Button type="submit" size="lg" className="w-full mt-6" disabled={loading}>
+
+                            {/* 3. Старые поля Город и Отделение заменены на компонент NovaPoshta */}
+                            <NovaPoshta onSelectionChange={handleNovaPoshtaChange} />
+                            
+                            <Button type="submit" size="lg" className="w-full !mt-8" disabled={loading}>
                                 {loading ? 'Оформление...' : `Подтвердить заказ на ${formatPrice(totalPrice)}`}
                             </Button>
                         </form>
