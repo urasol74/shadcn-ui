@@ -15,7 +15,7 @@ const CatalogImageIndex = () => {
                 alt="Модели в яркой одежде Benetton"
                 width="2070"
                 height="1380"
-                fetchPriority="high"
+                fetchpriority="high"
                 className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0" style={{ backgroundColor: 'rgb(129 128 128 / 30%)' }}></div>
