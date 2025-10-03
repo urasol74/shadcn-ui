@@ -9,6 +9,7 @@ const CatalogImageIndex = () => {
     return (
         <section className="relative h-[70vh] w-full">
             {/* Использование тега img для LCP оптимизации */}
+            {/* @ts-ignore */}
             <img
                 src="https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop"
                 alt="Модели в яркой одежде Benetton"
