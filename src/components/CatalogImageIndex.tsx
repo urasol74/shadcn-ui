@@ -28,7 +28,7 @@ const CatalogImageIndex = () => {
                         <span className="text-red-600">мир</span>
                     </span>
                 </h1>
-                <p className="mb-8 max-w-2xl text-lg">Откройте новую коллекцию, с разнообразием и ярким самовыражением!</p>
+                <p className="mb-8 max-w-3xl text-lg">Откройте новую коллекцию, с разнообразием и ярким самовыражением!</p>
                 <Link to="/gender/жiн/season/all">
                     <button
                         className="transform rounded-full px-12 py-3 text-sm font-bold uppercase tracking-wider text-white transition-transform hover:scale-105"
