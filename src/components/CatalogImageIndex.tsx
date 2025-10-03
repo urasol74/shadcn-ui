@@ -11,11 +11,11 @@ const CatalogImageIndex = () => {
             {/* Использование тега img для LCP оптимизации */}
             {/* @ts-ignore */}
             <img
-                src="https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop"
+                src="https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/image/photo-index-1.avif"
                 alt="Модели в яркой одежде Benetton"
                 width="2070"
                 height="1380"
-                fetchpriority="high"
+                fetchPriority="high"
                 className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0" style={{ backgroundColor: 'rgb(129 128 128 / 30%)' }}></div>
