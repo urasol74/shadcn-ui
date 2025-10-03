@@ -30,7 +30,7 @@ export default function CheckoutPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
-    const [totalPrice, setTotalPrice] = useState(0); // Эта сумма будет передана в калькулятор
+    const [totalPrice, setTotalPrice] = useState(0);
     const [loading, setLoading] = useState(false);
 
     const [novaPoshtaSelection, setNovaPoshtaSelection] = useState<NovaPoshtaSelection>({ 
@@ -64,9 +64,103 @@ export default function CheckoutPage() {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
+    // ВОССТАНОВЛЕННАЯ ЛОГИКА ОБРАБОТКИ ЗАКАЗА
     const handleSubmitOrder = async (e: React.FormEvent) => {
         e.preventDefault();
-        // ... (вся логика отправки заказа остается без изменений) ...
+        if (!user) {
+            toast.error("Пожалуйста, войдите, чтобы оформить заказ.", {
+                action: { label: "Войти", onClick: () => navigate('/login') },
+            });
+            return;
+        }
+        
+        const { fullName, phone } = formData;
+        const city = novaPoshtaSelection.city?.label;
+        const postOffice = novaPoshtaSelection.warehouse?.label;
+
+        if (!fullName || !phone || !city || !postOffice) {
+            toast.error("Пожалуйста, заполните все поля: ФИО, телефон, город и отделение доставки.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const variantIds = cartItems.map(item => item.id);
+            const { data: variantsData, error: variantsError } = await supabase
+                .from('variants')
+                .select('id, discount')
+                .in('id', variantIds);
+
+            if (variantsError) throw variantsError;
+
+            const orderData = cartItems.map(item => {
+                const variantDetail = variantsData.find(v => v.id === item.id);
+                const hasDiscount = variantDetail && variantDetail.discount > 0;
+                
+                return {
+                    user_id: user.id,
+                    full_name: fullName,
+                    phone: phone,
+                    city: city,
+                    nova_poshta_office: postOffice,
+                    article: item.article,
+                    size: item.size,
+                    color: item.color,
+                    price: item.price,
+                    stock: item.quantity,
+                    discount: hasDiscount ? variantDetail.discount : 0,
+                    sale: !hasDiscount ? (user.sale || 0) : 0,
+                    purchase_date: new Date().toISOString(),
+                };
+            });
+
+            const { error: insertError } = await supabase.from('card').insert(orderData);
+            if (insertError) throw insertError;
+
+            // --- Telegram Notification Logic ---
+            let messageLines = [
+                `*✅ Новый заказ с сайта!*`,
+                `--------------------------------`,
+                `*👤 Клиент:*`,
+                `ФИО: ${fullName}`,
+                `Телефон: ${phone}`,
+                `Город: ${city}`,
+                `НП: ${postOffice}`,
+                `--------------------------------`,
+                `*📦 Заказ:*`,
+            ];
+
+            cartItems.forEach(item => {
+                messageLines.push(`- ${item.name} (${item.article})`);
+                messageLines.push(`  Цвет: ${item.color}, Размер: ${item.size}`);
+                messageLines.push(`  Кол-во: ${item.quantity} шт. x ${formatPrice(item.price)}`);
+                messageLines.push(``);
+            });
+
+            messageLines.push(`--------------------------------`);
+            messageLines.push(`*💰 Итого: ${formatPrice(totalPrice)}*`);
+            
+            const message = messageLines.join('\n');
+
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' }),
+            });
+
+            localStorage.removeItem('cart');
+            window.dispatchEvent(new CustomEvent('cartChange'));
+            
+            toast.success("Заказ успешно оформлен!");
+            navigate('/order-success');
+
+        } catch (error: any) {
+            console.error("Error submitting order:", error);
+            toast.error(`Ошибка при оформлении заказа: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -90,9 +184,6 @@ export default function CheckoutPage() {
                             <NovaPoshta onSelectionChange={setNovaPoshtaSelection} />
                             
                             <div className="bg-gray-50 p-3 rounded-md min-h-[50px] flex items-center">
-                                {/* 
-                                  Передаем и Ref города, и итоговую сумму заказа в калькулятор.
-                                */}
                                 <DeliveryCalculator 
                                     recipientCityRef={novaPoshtaSelection.city?.value || null} 
                                     assessedCost={totalPrice}
