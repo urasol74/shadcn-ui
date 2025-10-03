@@ -19,7 +19,7 @@ const InfoSection = () => {
             </div>
             <div className="order-1 h-80 w-full overflow-hidden rounded-lg shadow-xl md:order-2">
                  <img 
-                    src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" 
+                    src="https://fquvncbvvkfukbwsjhns.supabase.co/storage/v1/object/public/image/image/img-info-index.jpg" 
                     alt="Модель в одежде Benetton" 
                     width="1887" 
                     height="2831" 
