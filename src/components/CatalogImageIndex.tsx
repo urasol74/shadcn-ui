@@ -7,7 +7,16 @@ const CatalogImageIndex = () => {
     };
 
     return (
-        <section className="relative h-[70vh] w-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop')" }}>
+        <section className="relative h-[70vh] w-full">
+            {/* Использование тега img для LCP оптимизации */}
+            <img
+                src="https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=2070&auto=format&fit=crop"
+                alt="Модели в яркой одежде Benetton"
+                width="2070"
+                height="1380"
+                fetchPriority="high"
+                className="absolute inset-0 h-full w-full object-cover"
+            />
             <div className="absolute inset-0" style={{ backgroundColor: 'rgb(129 128 128 / 30%)' }}></div>
             <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white">
                 <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
