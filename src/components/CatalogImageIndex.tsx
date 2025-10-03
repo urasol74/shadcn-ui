@@ -20,7 +20,7 @@ const CatalogImageIndex = () => {
             />
             <div className="absolute inset-0" style={{ backgroundColor: 'rgb(129 128 128 / 30%)' }}></div>
             <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white">
-                <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-6xl">
+            <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-7xl">
                     <span className="block">Benetton</span>
                     <span className="block">
                         <span className="text-blue-600">Раскрась</span>{" "}
