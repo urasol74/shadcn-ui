@@ -18,6 +18,13 @@ interface HighlightProduct {
   }[];
 }
 
+// Утилита для безопасного формирования URL
+const getImageUrl = (imagePath: string) => {
+    if (!imagePath) return '';
+    const sanitizedPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+    return `${SUPABASE_STORAGE_URL}/${sanitizedPath}`;
+};
+
 const ProductCardIndex = () => {
     const brandColors = {
         darkGreen: '#004C22',
@@ -29,56 +36,62 @@ const ProductCardIndex = () => {
 
     useEffect(() => {
         const fetchHighlightedProducts = async () => {
-        setLoading(true);
-        const genders = ['чол', 'жiн', 'хлопч', 'дiвч'];
-        
-        const checkImageExists = async (imageUrl: string): Promise<boolean> => {
-            try {
-            const response = await fetch(imageUrl, { method: 'HEAD' });
-            return response.ok;
-            } catch (error) {
-            return false;
-            }
-        };
+            setLoading(true);
+            const genders = ['чол', 'жiн', 'хлопч', 'дiвч'];
 
-        const findProductForGender = async (gender: string) => {
-            const { data: candidates, error } = await supabase
-            .from('products')
-            .select('id, name, article, gender, season, image, category_id, variants!inner(purchase_price, stock, discount)')
-            .eq('gender', gender)
-            .not('image', 'is', null)
-            .neq('image', '')
-            .not('image', 'ilike', '%placeholder%')
-            .gt('variants.stock', 0)
-            .or('discount.is.null,discount.eq.0', { foreignTable: 'variants' }) // Только товары без скидки
-            .limit(15);
+            const findProductForGender = async (gender: string) => {
+                const { data: candidates, error } = await supabase
+                    .from('products')
+                    .select('id, name, article, gender, season, image, category_id, variants!inner(purchase_price, stock, discount)')
+                    .eq('gender', gender)
+                    .not('image', 'is', null)
+                    .neq('image', '')
+                    .not('image', 'ilike', '%placeholder%')
+                    .gt('variants.stock', 0)
+                    .or('discount.is.null,discount.eq.0', { foreignTable: 'variants' })
+                    .limit(15);
 
-            if (error || !candidates) {
-            console.error(`Ошибка при загрузке кандидатов для ${gender}:`, error);
-            return null;
-            }
-
-            const shuffledCandidates = candidates.sort(() => 0.5 - Math.random());
-
-            for (const candidate of shuffledCandidates) {
-            if (candidate.image) {
-                const imageUrl = `${SUPABASE_STORAGE_URL}/${candidate.image}`;
-                const exists = await checkImageExists(imageUrl);
-                if (exists) {
-                return candidate as HighlightProduct;
+                if (error || !candidates || candidates.length === 0) {
+                    console.error(`Ошибка или нет кандидатов для ${gender}:`, error);
+                    return null;
                 }
-            }
-            }
 
-            return null;
-        };
+                // Создаем массив промисов для ПАРАЛЛЕЛЬНОЙ проверки изображений
+                const checkPromises = candidates.map(candidate => 
+                    new Promise<HighlightProduct>(async (resolve, reject) => {
+                        if (!candidate.image) return reject();
 
-        const productPromises = genders.map(findProductForGender);
-        const results = await Promise.all(productPromises);
-        const validProducts = results.filter((p): p is HighlightProduct => p !== null);
+                        const imageUrl = getImageUrl(candidate.image);
+                        try {
+                            const response = await fetch(imageUrl, { method: 'HEAD', cache: 'no-store' });
+                            if (response.ok) {
+                                resolve(candidate as HighlightProduct);
+                            } else {
+                                reject();
+                            }
+                        } catch (e) {
+                            reject();
+                        }
+                    })
+                );
 
-        setHighlightedProducts(validProducts);
-        setLoading(false);
+                try {
+                    // Promise.any ждет выполнения САМОГО ПЕРВОГО успешного промиса
+                    const firstValidProduct = await Promise.any(checkPromises);
+                    return firstValidProduct;
+                } catch (e) {
+                    // Этот блок выполнится, если ВСЕ промисы были отклонены
+                    console.warn(`Для категории '${gender}' не найдено ни одного товара с валидной картинкой.`);
+                    return null;
+                }
+            };
+
+            const productPromises = genders.map(findProductForGender);
+            const results = await Promise.all(productPromises);
+            const validProducts = results.filter((p): p is HighlightProduct => p !== null);
+
+            setHighlightedProducts(validProducts);
+            setLoading(false);
         };
 
         fetchHighlightedProducts();
@@ -94,7 +107,7 @@ const ProductCardIndex = () => {
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, index) => (
                         <div key={index} className="group block overflow-hidden rounded-lg bg-white shadow-lg">
-                          <div className="aspect-w-1 aspect-h-1 w-full bg-gray-200"></div>
+                          <div className="aspect-w-1 aspect-h-1 w-full bg-gray-200 animate-pulse"></div>
                           <div className="p-6 min-h-[8rem]">
                             <div className="h-6 w-3/4 rounded bg-gray-200 animate-pulse"></div>
                             <div className="mt-4 h-4 w-1/4 rounded bg-gray-200 animate-pulse"></div>
@@ -112,7 +125,7 @@ const ProductCardIndex = () => {
                     >
                         <div className="overflow-hidden aspect-w-1 aspect-h-1">
                             <img 
-                                src={`${SUPABASE_STORAGE_URL}/${product.image}`}
+                                src={getImageUrl(product.image)}
                                 alt={product.name}
                                 width="400"
                                 height="400"
