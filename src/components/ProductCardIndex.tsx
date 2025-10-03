@@ -91,7 +91,17 @@ const ProductCardIndex = () => {
               Лучшее сегодня - новая коллекция!
             </h2>
             {loading ? (
-                <div className="text-center py-8">Загрузка рекомендуемых товаров...</div>
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <div key={index} className="rounded-lg bg-white shadow-lg animate-pulse">
+                            <div className="h-64 rounded-t-lg bg-gray-200"></div>
+                            <div className="p-6">
+                                <div className="h-6 w-3/4 rounded bg-gray-200"></div>
+                                <div className="mt-4 h-4 w-1/4 rounded bg-gray-200"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             ) : highlightedProducts.length > 0 ? (
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
                 {highlightedProducts.map((product) => (
@@ -113,7 +123,7 @@ const ProductCardIndex = () => {
                                 }}
                             />
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 min-h-[8rem]">
                             <h3 className="text-lg font-semibold truncate" title={product.name}>{product.name}</h3>
                             <p className="mt-2 text-gray-500">{formatPrice(product.variants[0]?.purchase_price ?? 0)}</p>
                         </div>

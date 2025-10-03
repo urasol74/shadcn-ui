@@ -18,7 +18,12 @@ const InfoSection = () => {
                 </a>
             </div>
             <div className="order-1 h-80 w-full overflow-hidden rounded-lg shadow-xl md:order-2">
-                 <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" alt="Модель в одежде Benetton" className="h-full w-full object-cover" />
+                 <img 
+                    src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1887&auto=format&fit=crop" 
+                    alt="Модель в одежде Benetton" 
+                    width="1887" 
+                    height="2831" 
+                    className="h-full w-full object-cover" />
             </div>
         </section>
     );
