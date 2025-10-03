@@ -35,6 +35,7 @@ export interface CartItem {
 
 // ИСПРАВЛЕННЫЙ ТИП USER
 export interface User {
+  tel: string;
   sale: number;
   phone: string;
   id: string;
