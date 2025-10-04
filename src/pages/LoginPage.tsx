@@ -1,11 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import Header from '@/components/Header';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth'; // Импортируем наш новый хук
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth(); // Получаем функцию login из хука
   const [formData, setFormData] = useState({
     tel: '',
     password: ''
@@ -24,7 +25,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Валидация данных
     if (!formData.tel || !formData.password) {
       setError('Телефон и пароль обязательны для заполнения');
       return;
@@ -34,7 +34,6 @@ export default function LoginPage() {
     setError('');
     
     try {
-      // Поиск пользователя по телефону и паролю
       const { data, error } = await supabase
         .from('user')
         .select('id, name, tel, sale')
@@ -50,17 +49,16 @@ export default function LoginPage() {
         throw new Error('Пользователь не найден');
       }
       
-      // Преобразуем значение sale в число, если оно хранится как строка
       if (typeof data.sale === 'string') {
-        // Удаляем запятую и преобразуем в число
         data.sale = Number(data.sale.replace(',', '.').replace(/[^0-9.]/g, ''));
       }
       
-      // Сохраняем информацию о пользователе в localStorage
-      localStorage.setItem('user', JSON.stringify(data));
+      // Используем функцию login из хука. Она сама обновит localStorage и уведомит Header
+      login(data);
       
       // Перенаправляем на главную страницу
       navigate('/');
+
     } catch (err) {
       console.error('Login error:', err);
       setError('Неверный телефон или пароль');
@@ -71,7 +69,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Вход</h1>

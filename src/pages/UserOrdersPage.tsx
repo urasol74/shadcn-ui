@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import Header from '@/components/Header';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -132,7 +131,6 @@ const UserOrdersPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="container mx-auto px-4 py-8">
                 <div className="mb-6 flex items-center gap-4">
                     <Button asChild variant="outline" size="icon">

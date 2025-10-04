@@ -1,6 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { useIsProduct } from '@/hooks/useIsProduct';
@@ -117,7 +116,7 @@ export default function GenderSeasonPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
+
             <div className="container mx-auto px-4 pt-8">
                  <div className="flex items-center gap-4 mb-6">
                     <Button variant="outline" onClick={() => navigate(-1)}>

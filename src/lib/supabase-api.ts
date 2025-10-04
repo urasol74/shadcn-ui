@@ -1,5 +1,15 @@
+
 import { supabase } from './supabase'
 import { cacheService } from './cacheService'
+
+// Функция для перемешивания массива (алгоритм Фишера–Йейтса)
+function shuffleArray(array: any[]) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
 
 export const supabaseApi = {
 
@@ -12,7 +22,6 @@ export const supabaseApi = {
       return cached;
     }
 
-    // 1. ИЗМЕНЯЕМ ЗАПРОС: добавляем `variants` для получения цен
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -20,7 +29,7 @@ export const supabaseApi = {
         variants!inner(purchase_price, sale_price, discount, stock)
       `)
       .or(`name.ilike.%${query}%,article.ilike.%${query}%`)
-      .gt('variants.stock', 0) // Только товары в наличии
+      .gt('variants.stock', 0)
       .limit(20);
 
     if (error) {
@@ -32,14 +41,11 @@ export const supabaseApi = {
         return [];
     }
 
-    // 2. ОБРАБАТЫВАЕМ РЕЗУЛЬТАТ: для каждого товара находим лучший вариант (самый дешевый)
-    // и создаем плоскую структуру данных, которую ожидает ProductCard.
     const processedResults = data.map(product => {
         if (!product.variants || product.variants.length === 0) {
             return null;
         }
 
-        // Находим вариант с самой низкой ценой продажи для отображения
         const bestVariant = product.variants.reduce((best: any, current: any) => {
             if (!best) return current;
             return current.sale_price < best.sale_price ? current : best;
@@ -53,19 +59,16 @@ export const supabaseApi = {
             season: product.season,
             category_id: product.category_id,
             image: product.image,
-            // Добавляем информацию о ценах из найденного варианта
             purchase_price: bestVariant.purchase_price,
             sale_price: bestVariant.sale_price,
             discount: bestVariant.discount,
         };
-    }).filter(p => p !== null); // Убираем пустые результаты
-
+    }).filter(p => p !== null);
 
     cacheService.set(cacheKey, processedResults);
     return processedResults;
   },
 
-  // Замена для /api/product
   async getProduct(article: string) {
     if (!article) return { product: null, variants: [] };
 
@@ -112,4 +115,68 @@ export const supabaseApi = {
     cacheService.set(cacheKey, result);
     return result;
   },
+
+  // НОВАЯ ФУНКЦИЯ: Получение случайных товаров
+  async getRandomProducts(limit: number) {
+    const cacheKey = cacheService.generateKey('getRandomProducts', { limit });
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Загружаем пул из 50 товаров в наличии
+    const { data, error } = await supabase
+        .from('products')
+        .select('id, article, name, variants!inner(sale_price, discount, stock)')
+        .gt('variants.stock', 0)
+        .limit(50);
+
+    if (error) {
+        console.error('Get random products error:', error);
+        return [];
+    }
+    
+    const processed = data.map(p => {
+        const bestVariant = p.variants.reduce((best: any, current: any) => 
+            current.sale_price < best.sale_price ? current : best
+        );
+        return {
+            product_id: p.id,
+            article: p.article,
+            name: p.name,
+            sale_price: bestVariant.sale_price,
+            discount: bestVariant.discount
+        }
+    });
+    
+    // Перемешиваем и возвращаем нужное количество
+    const shuffled = shuffleArray(processed);
+    const result = shuffled.slice(0, limit);
+
+    cacheService.set(cacheKey, result, 600); // Кэшируем на 10 минут
+    return result;
+  },
+
+  // НОВАЯ ФУНКЦИЯ: Получение категорий по полу
+  async getCategories(gender: string) {
+    const cacheKey = cacheService.generateKey('getCategories', { gender });
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const { data, error } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('gender', gender)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Get categories error:', error);
+      return [];
+    }
+
+    cacheService.set(cacheKey, data);
+    return data;
+  }
 };

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Header from '@/components/Header';
 import { supabase } from '@/lib/supabase';
 
 // Определяем тип для пользователя
@@ -91,7 +90,6 @@ const AdminPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="flex container mx-auto px-4 py-8 space-x-8">
                 <aside className="w-1/5 flex-shrink-0">
                     <div className="bg-white p-4 rounded-lg shadow-md">

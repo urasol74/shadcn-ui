@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function SupabaseTest() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [randomProducts, setRandomProducts] = useState([])
-  const [categories, setCategories] = useState([])
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [randomProducts, setRandomProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedGender, setSelectedGender] = useState('чол')
 
@@ -51,8 +51,11 @@ export function SupabaseTest() {
 
   useEffect(() => {
     loadRandomProducts()
-    loadCategories()
   }, [])
+
+  useEffect(() => {
+    loadCategories()
+  }, [selectedGender])
 
   return (
     <div className="p-6 space-y-6">

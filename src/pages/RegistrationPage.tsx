@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import Header from '@/components/Header';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -74,7 +73,6 @@ export default function RegistrationPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Регистрация</h1>

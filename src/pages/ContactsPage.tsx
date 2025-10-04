@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Header from '@/components/Header';
 import { supabase } from '@/lib/supabase';
 import { Toaster, toast } from 'sonner';
 import { decode } from 'html-entities';
@@ -34,7 +33,6 @@ const ContactsPage = () => {
   return (
     <>
       <Toaster />
-      <Header />
       <div className="container mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold mb-6">Контакты</h1>
         {loading ? (

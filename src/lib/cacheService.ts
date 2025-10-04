@@ -1,7 +1,7 @@
 // Сервис кэширования для API запросов
 class CacheService {
-  private cache: Map<string, { data: any; timestamp: number }> = new Map();
-  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 минут по умолчанию
+  private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 минут по умолчанию в миллисекундах
 
   // Получение данных из кэша
   get(key: string): any | null {
@@ -9,7 +9,8 @@ class CacheService {
     if (!cached) return null;
 
     const now = Date.now();
-    if (now - cached.timestamp > this.DEFAULT_TTL) {
+    // Используем TTL, сохраненный для этого элемента кэша
+    if (now - cached.timestamp > cached.ttl) {
       // Кэш истек
       this.cache.delete(key);
       return null;
@@ -18,11 +19,13 @@ class CacheService {
     return cached.data;
   }
 
-  // Сохранение данных в кэш
-  set(key: string, data: any): void {
+  // Сохранение данных в кэш. ttlInSeconds - опциональное время жизни в секундах.
+  set(key: string, data: any, ttlInSeconds?: number): void {
+    const ttl = ttlInSeconds ? ttlInSeconds * 1000 : this.DEFAULT_TTL;
     this.cache.set(key, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      ttl: ttl,
     });
   }
 

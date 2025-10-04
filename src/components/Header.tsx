@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import LiveSearch from './LiveSearch';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth'; // Правильный импорт
 import { Heart, ShoppingCart, LogOut, LogIn, UserPlus, Search, UserCog } from 'lucide-react';
 import {
   Tooltip,
@@ -17,14 +17,14 @@ interface CartItem {
 }
 
 const Header = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth(); // Вся логика пользователя теперь здесь
   const navigate = useNavigate();
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Точная проверка на администратора по полю tel
+    // Эта логика остается, так как она зависит от состояния пользователя из хука
     if (user && user.tel === '380994580337') {
         setIsAdmin(true);
     } else {
@@ -33,6 +33,7 @@ const Header = () => {
   }, [user]);
 
   useEffect(() => {
+    // Логика для избранного остается, но ее можно будет рефакторить в будущем
     const updateFavoritesCount = () => {
       try {
         const savedFavorites = localStorage.getItem('favorites');
@@ -55,6 +56,7 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
+    // Логика для корзины остается, но ее можно будет рефакторить в будущем
     const updateCartCount = () => {
       try {
         const savedCart = localStorage.getItem('cart');

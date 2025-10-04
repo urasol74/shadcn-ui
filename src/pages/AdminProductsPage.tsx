@@ -1,5 +1,4 @@
 import { useState, useEffect, Fragment, useMemo } from 'react';
-import Header from '@/components/Header';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 
@@ -141,7 +140,6 @@ const AdminProductsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
       <div className="flex container mx-auto px-4 py-8 space-x-8">
         <aside className="w-1/5 flex-shrink-0">
           <div className="bg-white p-4 rounded-lg shadow-md">

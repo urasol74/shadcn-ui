@@ -20,6 +20,7 @@ import AdminProductsPage from './pages/AdminProductsPage';
 import UserOrdersPage from './pages/UserOrdersPage';
 import QuickOrdersAdminPage from './pages/QuickOrdersAdminPage';
 import React from 'react';
+import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -39,6 +40,7 @@ const AppWrapper = () => {
 
   return (
     <div className="flex min-h-screen flex-col">
+        {<Header />}
         <ScrollToTop />
         <Routes>
             {/* Основные страницы */}
@@ -77,7 +79,7 @@ const AppWrapper = () => {
             
             <Route path="*" element={<NotFound />} />
         </Routes>
-        {!isAdminPage && <Footer />} 
+        {!isAdminPage && <Footer />}
         <SpeedInsights />
     </div>
   );

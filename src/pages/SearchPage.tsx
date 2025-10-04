@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { supabaseApi } from '@/lib/supabase-api';
-import Header from '@/components/Header';
 import ProductCard from '@/components/ProductCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,6 @@ const SearchPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="container mx-auto px-4 py-8">
                 <h1 className="text-3xl font-bold mb-6">Поиск по сайту</h1>
                 

@@ -1,7 +1,6 @@
 
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Home } from 'lucide-react';
@@ -179,7 +178,6 @@ export default function ProductPage() {
     if (!product) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <Header />
                 <div className="container mx-auto px-4 py-8 text-center">
                     <h2 className="text-2xl font-bold mb-4">Товар не найден</h2>
                     <p className="text-gray-600 mb-6">Возможно, товар был удален или ссылка устарела.</p>
@@ -198,7 +196,6 @@ export default function ProductPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="container mx-auto px-4 py-8">
                 <div className="flex items-center gap-4 mb-6">
                     <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-2" />Назад</Button>
