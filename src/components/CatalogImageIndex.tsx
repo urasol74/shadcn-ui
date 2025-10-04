@@ -7,7 +7,7 @@ const CatalogImageIndex = () => {
     };
 
     return (
-        <section className="relative h-[70vh] w-full">
+        <section className="relative h-[60vh] w-full mt-4 rounded-lg overflow-hidden"> 
             {/* Использование тега img для LCP оптимизации */}
             {/* @ts-ignore */}
             <img
@@ -19,16 +19,16 @@ const CatalogImageIndex = () => {
                 className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0" style={{ backgroundColor: 'rgb(129 128 128 / 30%)' }}></div>
-            <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white">
-            <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-7xl">
-                    <span className="block">Benetton</span>
+            <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white p-4"> 
+                <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-[5rem]">
+                    <span className="block mb-6">Benetton</span>
                     <span className="block">
                         <span className="text-blue-600">Раскрась</span>{" "}
                         <span className="text-yellow-400">свой</span>{" "}
                         <span className="text-red-600">мир</span>
                     </span>
                 </h1>
-                <p className="mb-8 max-w-3xl text-lg">Откройте новую коллекцию, с разнообразием и ярким самовыражением!</p>
+                <p className="mt-4 mb-8 max-w-2xl text-lg">Откройте новую коллекцию, с разнообразием и ярким самовыражением!</p>
                 <Link to="/gender/жiн/season/all">
                     <button
                         className="transform rounded-full px-12 py-3 text-sm font-bold uppercase tracking-wider text-white transition-transform hover:scale-105"

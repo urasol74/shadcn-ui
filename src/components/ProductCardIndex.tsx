@@ -98,7 +98,7 @@ const ProductCardIndex = () => {
     }, []);
 
     return (
-        <section className="py-20" style={{ backgroundColor: brandColors.backgroundLight }}>
+        <section className="py-10" style={{ backgroundColor: brandColors.backgroundLight }}>
           <div className="container mx-auto px-6">
             <h2 className="mb-12 text-center text-3xl font-bold" style={{ color: brandColors.darkGreen }}>
               Лучшее сегодня - новая коллекция!
