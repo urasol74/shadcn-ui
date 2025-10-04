@@ -7,7 +7,7 @@ const CatalogImageIndex = () => {
     };
 
     return (
-        <section className="relative h-[60vh] w-full mt-4 rounded-lg overflow-hidden"> 
+        <section className="relative h-[40vh] w-full mt-4 rounded-lg overflow-hidden"> 
             {/* Использование тега img для LCP оптимизации */}
             {/* @ts-ignore */}
             <img
