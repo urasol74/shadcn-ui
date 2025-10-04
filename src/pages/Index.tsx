@@ -5,13 +5,11 @@ import InfoSection from '@/components/InfoSection';
 
 const BenettonHomePage = () => {
   return (
-    <div className="bg-gray-50 font-sans text-gray-800">
-      <main className="container mx-auto px-4">
-        <CatalogImageIndex />
-        <ProductCardIndex />
-        <InfoSection />
-      </main>
-    </div>
+    <>
+      <CatalogImageIndex />
+      <ProductCardIndex />
+      <InfoSection />
+    </>
   );
 };
 

@@ -39,46 +39,48 @@ const AppWrapper = () => {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
-    <div className="flex min-h-screen flex-col">
-        {<Header />}
+    <div className="flex min-h-screen flex-col container mx-auto px-4">
+        <Header />
         <ScrollToTop />
-        <Routes>
-            {/* Основные страницы */}
-            <Route path="/" element={<Index />} />
-            <Route path="/registration" element={<RegistrationPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/order-success" element={<OrderSuccessPage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/product/:id" element={<ProductPage />} />
-            <Route path="/novaposhta" element={<TestNovaPoshta />} /> {/* МАРШРУТ ДЛЯ СТРАНИЦЫ ТЕСТА */}
+        <div className="flex-grow">
+          <Routes>
+              {/* Основные страницы */}
+              <Route path="/" element={<Index />} />
+              <Route path="/registration" element={<RegistrationPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/order-success" element={<OrderSuccessPage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/product/:id" element={<ProductPage />} />
+              <Route path="/novaposhta" element={<TestNovaPoshta />} /> {/* МАРШРУТ ДЛЯ СТРАНИЦЫ ТЕСТА */}
 
-            {/* Новые информационные страницы */}
-            <Route path="/contacts" element={<ContactsPage />} />
-            <Route path="/returns" element={<ReturnsPage />} />
-            <Route path="/shipping" element={<ShippingPage />} />
+              {/* Новые информационные страницы */}
+              <Route path="/contacts" element={<ContactsPage />} />
+              <Route path="/returns" element={<ReturnsPage />} />
+              <Route path="/shipping" element={<ShippingPage />} />
 
-            {/* Admin Routes */}
-            <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
-            <Route path="/admin/user" element={<AdminPage />} />
-            <Route path="/admin/products" element={<AdminProductsPage />} />
-            <Route path="/admin/user/:id" element={<UserOrdersPage />} />
-            <Route path="/admin/quick-orders" element={<QuickOrdersAdminPage />} />
-            <Route path="/admin/editor" element={<EditorPage />} />
-            <Route path="/admin/editor/:page_slug" element={<ContentEditorPage />} />
+              {/* Admin Routes */}
+              <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
+              <Route path="/admin/user" element={<AdminPage />} />
+              <Route path="/admin/products" element={<AdminProductsPage />} />
+              <Route path="/admin/user/:id" element={<UserOrdersPage />} />
+              <Route path="/admin/quick-orders" element={<QuickOrdersAdminPage />} />
+              <Route path="/admin/editor" element={<EditorPage />} />
+              <Route path="/admin/editor/:page_slug" element={<ContentEditorPage />} />
 
-            {/* Legacy & Combined Routes */}
-            <Route path="/gender/:gender/season/:season" element={<GenderSeasonPage />} />
-            <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />
-            <Route path="/gender/:gender/season/:season/product/:article" element={<ProductPage />} />
-            <Route path="/gender/:gender/season/:season/category/:categoryId/:article" element={<ProductPage />} />
-            <Route path="/gender/:gender" element={<Navigate to="/gender/:gender/season/all" replace />} />
-            <Route path="/category/:gender/:categoryId" element={<CategoryPage />} />
-            
-            <Route path="*" element={<NotFound />} />
-        </Routes>
+              {/* Legacy & Combined Routes */}
+              <Route path="/gender/:gender/season/:season" element={<GenderSeasonPage />} />
+              <Route path="/gender/:gender/season/:season/category/:categoryId" element={<GenderSeasonPage />} />
+              <Route path="/gender/:gender/season/:season/product/:article" element={<ProductPage />} />
+              <Route path="/gender/:gender/season/:season/category/:categoryId/:article" element={<ProductPage />} />
+              <Route path="/gender/:gender" element={<Navigate to="/gender/:gender/season/all" replace />} />
+              <Route path="/category/:gender/:categoryId" element={<CategoryPage />} />
+              
+              <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
         {!isAdminPage && <Footer />}
         <SpeedInsights />
     </div>
